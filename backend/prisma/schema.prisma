@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String            @id @default(uuid())
+  email        String?           @unique
+  passwordHash String?
+  displayName  String
+  avatarUrl    String?
+  isGuest      Boolean           @default(false)
+  role         String            @default("user") // user | admin
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  rooms        Room[]            @relation("HostRooms")
+  videos       Video[]
+  uploads      Upload[]
+  messages     ChatMessage[]
+  participants RoomParticipant[]
+  watchHistory WatchHistory[]
+}
+
+model Room {
+  id              String            @id @default(uuid())
+  roomCode        String            @unique
+  name            String
+  hostId          String
+  host            User              @relation("HostRooms", fields: [hostId], references: [id])
+  currentVideoId  String?
+  currentVideo    Video?            @relation(fields: [currentVideoId], references: [id])
+  isLocked        Boolean           @default(false)
+  controlMode     String            @default("HOST_ONLY") // HOST_ONLY | EVERYONE
+  playbackState   String            @default("PAUSED")    // PLAYING | PAUSED | BUFFERING
+  playbackPosition Float            @default(0.0)
+  playbackRate    Float             @default(1.0)
+  stateUpdatedAt  DateTime          @default(now())
+  sequenceNumber  Int               @default(0)
+  maxParticipants Int               @default(12)
+  expiresAt       DateTime
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  participants    RoomParticipant[]
+  messages        ChatMessage[]
+}
+
+model RoomParticipant {
+  id         String   @id @default(uuid())
+  roomId     String
+  room       Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       String   @default("PARTICIPANT") // HOST | PARTICIPANT | MODERATOR
+  joinedAt   DateTime @default(now())
+  isMuted    Boolean  @default(false)
+  isVideoOff Boolean  @default(false)
+  isOnline   Boolean  @default(true)
+
+  @@unique([roomId, userId])
+}
+
+model Video {
+  id               String         @id @default(uuid())
+  ownerId          String
+  owner            User           @relation(fields: [ownerId], references: [id])
+  sourceType       String         // YOUTUBE | UPLOADED
+  title            String
+  youtubeUrl       String?
+  youtubeVideoId   String?
+  originalFileName String?
+  fileSize         BigInt?
+  duration         Float?
+  mimeType         String?
+  status           String         @default("PENDING") // PENDING | UPLOADING | PROCESSING | PARTIALLY_READY | READY | FAILED
+  manifestUrl      String?
+  thumbnailUrl     String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  rooms            Room[]
+  upload           Upload?
+  segments         VideoSegment[]
+}
+
+model Upload {
+  id              String        @id @default(uuid())
+  videoId         String        @unique
+  video           Video         @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User          @relation(fields: [userId], references: [id])
+  chunkSize       Int           // e.g. 10MB
+  totalChunks     Int
+  completedChunks Int           @default(0)
+  status          String        @default("UPLOADING") // UPLOADING | PROCESSING | COMPLETED | FAILED
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  chunks          UploadChunk[]
+}
+
+model UploadChunk {
+  id          String    @id @default(uuid())
+  uploadId    String
+  upload      Upload    @relation(fields: [uploadId], references: [id], onDelete: Cascade)
+  chunkIndex  Int
+  byteStart   BigInt
+  byteEnd     BigInt
+  eTag        String?
+  isUploaded  Boolean   @default(false)
+  uploadedAt  DateTime?
+
+  @@unique([uploadId, chunkIndex])
+}
+
+model VideoSegment {
+  id           String   @id @default(uuid())
+  videoId      String
+  video        Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  segmentIndex Int
+  duration     Float
+  startTime    Float
+  endTime      Float
+  segmentPath  String
+  isAvailable  Boolean  @default(false)
+
+  @@unique([videoId, segmentIndex])
+}
+
+model ChatMessage {
+  id        String   @id @default(uuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderId  String
+  sender    User     @relation(fields: [senderId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model WatchHistory {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roomCode   String
+  videoTitle String
+  sourceType String   // YOUTUBE | UPLOADED
+  youtubeUrl String?
+  thumbnail  String?
+  watchedAt  DateTime @default(now())
+}

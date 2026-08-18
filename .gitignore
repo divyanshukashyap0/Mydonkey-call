@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Production builds
+dist/
+build/
+**/dist/
+**/build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+*.env
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Uploaded / Temporary Media Chunks
+uploads/
+**/uploads/
+temp/
+**/temp/
+storage/
+**/storage/
+*.db
+*.sqlite
+
