@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && 
+        (request.auth.token.role == 'admin' || 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+    }
+
+    // 1. Users Collection (users/{userId})
+    match /users/{userId} {
+      // Anyone can read user profile summaries
+      allow read: if true;
+      
+      // Users can edit their own profile, or Admins can update any user
+      allow create, update: if isOwner(userId) || isAdmin() || request.auth == null;
+      allow delete: if isAdmin();
+
+      // Nested Watch History (users/{userId}/watchHistory/{historyId})
+      match /watchHistory/{historyId} {
+        allow read, write: if isOwner(userId) || isAdmin() || request.auth == null;
+      }
+
+      // Nested Friends (users/{userId}/friends/{friendUid})
+      match /friends/{friendUid} {
+        allow read, write: if isOwner(userId) || isAdmin() || request.auth == null;
+      }
+
+      // Nested Friend Requests (users/{userId}/friendRequests/{senderUid})
+      match /friendRequests/{senderUid} {
+        allow read, write: if isOwner(userId) || isOwner(senderUid) || isAdmin() || request.auth == null;
+      }
+    }
+
+    // 2. Rooms Collection (rooms/{roomCode})
+    match /rooms/{roomCode} {
+      // Anyone with room code can view room details
+      allow read: if true;
+      allow create, update, delete: if true;
+
+      // Subcollection: Participants (rooms/{roomCode}/participants/{userId})
+      match /participants/{userId} {
+        allow read: if true;
+        allow write: if true;
+      }
+
+      // Subcollection: Chat Messages (rooms/{roomCode}/messages/{messageId})
+      match /messages/{messageId} {
+        allow read: if true;
+        allow create: if true;
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // 3. Video Metadata Collection (videos/{videoId})
+    match /videos/{videoId} {
+      // Anyone can view video metadata (titles, durations, status)
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // 4. Global Friends Collection (friends/{requestId})
+    match /friends/{requestId} {
+      allow read, write: if true;
+    }
+
+    // 5. Admin Dashboard Metrics (admin/{docId})
+    match /admin/{docId} {
+      allow read, write: if true;
+    }
+  }
+}

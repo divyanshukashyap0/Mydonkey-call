@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: mydonkey_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password_2026
+      POSTGRES_DB: mydonkey_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: mydonkey_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio:latest
+    container_name: mydonkey_minio
+    restart: always
+    entrypoint: sh
+    command: -c 'minio server /data --console-address ":9001"'
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadminpassword
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mydonkey_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://postgres:postgres_password_2026@postgres:5432/mydonkey_db?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      JWT_SECRET: "mydonkey-production-jwt-secret"
+      FIREBASE_PROJECT_ID: "mydonkey-call"
+    depends_on:
+      - postgres
+      - redis
+      - minio
+
+volumes:
+  postgres_data:
+  minio_data:
