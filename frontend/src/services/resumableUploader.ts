@@ -111,7 +111,7 @@ export class ResumableUploader {
           this.completedChunks.add(index);
           this.emitProgress('UPLOADING');
 
-          if (this.completedChunks.size >= 2 && !this.hasTriggeredEarlyReady && this.videoId) {
+          if (this.completedChunks.size >= 1 && !this.hasTriggeredEarlyReady && this.videoId) {
             this.hasTriggeredEarlyReady = true;
             if (this.onEarlyReady) {
               this.onEarlyReady(this.videoId);

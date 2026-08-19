@@ -11,11 +11,13 @@ import { HostControlsModal } from '../components/room/HostControlsModal';
 import { WebRTCProvider } from '../context/WebRTCContext';
 import { HLSPlayer } from '../components/player/HLSPlayer';
 import { UploadModal } from '../components/upload/UploadModal';
+import { BackgroundUploadOverlay } from '../components/upload/BackgroundUploadOverlay';
 import { ConnectionHealthBadge } from '../components/room/ConnectionHealthBadge';
 import { ReadySystemBar } from '../components/room/ReadySystemBar';
 import { DeveloperDebugModal } from '../components/debug/DeveloperDebugModal';
 import { useRoomStore } from '../store/useRoomStore';
 import { useAuthStore } from '../store/useAuthStore';
+import { useUploadStore } from '../store/useUploadStore';
 import { useSyncClock } from '../hooks/useSyncClock';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useSyncEngine } from '../hooks/useSyncEngine';
@@ -140,6 +142,10 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
       useRoomStore.getState().updateRoomSettings(room as any);
     });
 
+    socket.on('upload:progress', (data) => {
+      useUploadStore.getState().setRemoteUploadProgress(data);
+    });
+
     socket.on('error:message', ({ message }) => {
       console.warn('Room socket error:', message);
       if (!useRoomStore.getState().currentRoom) {
@@ -167,6 +173,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
       socket.off('room:ended');
       socket.off('chat:receive');
       socket.off('room:updated');
+      socket.off('upload:progress');
       socket.off('error:message');
     };
   }, [roomCode, user]);
@@ -411,8 +418,22 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                     playerRef.current = {
                       getCurrentTime: () => videoEl.currentTime,
                       getDuration: () => videoEl.duration || 0,
-                      playVideo: () => videoEl.play().catch((err) => console.warn('Autoplay prevented until user interacts with the page:', err)),
-                      pauseVideo: () => videoEl.pause(),
+                      playVideo: async () => {
+                        try {
+                          const p = videoEl.play();
+                          if (p !== undefined) await p;
+                        } catch (err: any) {
+                          if (err.name === 'NotAllowedError') {
+                            videoEl.muted = true;
+                            videoEl.play().catch(() => {});
+                          }
+                        }
+                      },
+                      pauseVideo: () => {
+                        try {
+                          videoEl.pause();
+                        } catch (err) {}
+                      },
                       seekTo: (sec: number) => { videoEl.currentTime = sec; },
                       setPlaybackRate: (r: number) => { videoEl.playbackRate = r; },
                       getPlayerState: () => (videoEl.paused ? 2 : 1),
@@ -677,6 +698,11 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
       <UploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
+      />
+
+      {/* Floating Background Upload Progress Overlay (Visible to Host & Uploaders) */}
+      <BackgroundUploadOverlay
+        onOpenUploadModal={() => setIsUploadModalOpen(true)}
       />
 
       {/* Host Controls Modal */}

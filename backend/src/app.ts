@@ -20,6 +20,11 @@ app.use(cors({
   credentials: true,
 }));
 
+app.use((_req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  next();
+});
+
 app.use(express.json());
 
 // Root Info Route

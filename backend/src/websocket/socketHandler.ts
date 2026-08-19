@@ -158,24 +158,40 @@ export function setupSocketIO(io: SocketIOServer) {
         socket.join(`user:${socket.user.id}`);
         socket.currentRoomCode = normalizedCode;
 
-        const participant = await prisma.roomParticipant.upsert({
-          where: {
-            roomId_userId: {
+        let participant;
+        try {
+          participant = await prisma.roomParticipant.upsert({
+            where: {
+              roomId_userId: {
+                roomId: room.id,
+                userId: socket.user.id,
+              },
+            },
+            update: { isOnline: true },
+            create: {
               roomId: room.id,
               userId: socket.user.id,
+              role: room.hostId === socket.user.id ? 'HOST' : 'PARTICIPANT',
+              isOnline: true,
             },
-          },
-          update: { isOnline: true },
-          create: {
-            roomId: room.id,
-            userId: socket.user.id,
-            role: room.hostId === socket.user.id ? 'HOST' : 'PARTICIPANT',
-            isOnline: true,
-          },
-          include: {
-            user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } },
-          },
-        });
+            include: {
+              user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } },
+            },
+          });
+        } catch (upsertErr) {
+          participant = await prisma.roomParticipant.update({
+            where: {
+              roomId_userId: {
+                roomId: room.id,
+                userId: socket.user.id,
+              },
+            },
+            data: { isOnline: true },
+            include: {
+              user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } },
+            },
+          });
+        }
 
         // Sync Room & Participant state to Cloud Firestore
         syncRoomToFirestore(room).catch(() => {});
@@ -449,6 +465,15 @@ export function setupSocketIO(io: SocketIOServer) {
         console.error('Video Change error:', err);
         socket.emit('error:message', { message: 'Failed to change room video' });
       }
+    });
+
+    socket.on('upload:progress', ({ progress, fileName }) => {
+      if (!socket.currentRoomCode) return;
+      socket.to(`room:${socket.currentRoomCode}`).emit('upload:progress', {
+        progress,
+        fileName,
+        uploaderName: socket.user?.displayName || 'User',
+      });
     });
 
     // --- Host Controls Handlers ---

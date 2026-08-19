@@ -131,6 +131,7 @@ export interface ServerToClientEvents {
   'room:countdown-cancelled': (data: { reason: string }) => void;
   'room:countdown-start': () => void;
   'sync:pong': (data: { clientTime: number; serverTime: number }) => void;
+  'upload:progress': (data: { progress: any; fileName: string; uploaderName: string }) => void;
   'error:message': (data: { message: string }) => void;
 }
 
@@ -157,5 +158,6 @@ export interface ClientToServerEvents {
   'webrtc:ice': (data: { targetUserId: string; candidate: any }) => void;
   'webrtc:reconnect-request': (data: { targetUserId: string }) => void;
   'participant:toggle-media': (data: { isMuted?: boolean; isVideoOff?: boolean }) => void;
+  'upload:progress': (data: { progress: any; fileName: string }) => void;
   'sync:ping': (data: { clientTime: number }) => void;
 }

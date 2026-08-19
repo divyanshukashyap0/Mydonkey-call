@@ -5,6 +5,8 @@ import { connectSocket, disconnectSocket } from '../services/socket';
 import { auth, googleProvider } from '../config/firebase';
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInAnonymously,
@@ -35,6 +37,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   initAuth: () => {
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user) {
+          const idToken = await result.user.getIdToken();
+          localStorage.setItem('mydonkey_token', idToken);
+
+          const appUser: User = {
+            id: result.user.uid,
+            displayName: result.user.displayName || 'Google User',
+            email: result.user.email || null,
+            avatarUrl: result.user.photoURL || null,
+            isGuest: false,
+          };
+
+          await api.syncFirebaseUser(appUser).catch(() => {});
+          syncUserClient(appUser).catch(() => {});
+
+          set({ user: appUser, token: idToken, isLoading: false, error: null });
+          connectSocket(idToken);
+        }
+      })
+      .catch((err) => {
+        console.warn('Firebase redirect auth result handling error:', err);
+      });
+
     onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
@@ -100,6 +127,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       connectSocket(idToken);
       return appUser;
     } catch (err: any) {
+      if (
+        err.code === 'auth/popup-blocked' ||
+        err.code === 'auth/popup-closed-by-user' ||
+        err.message?.includes('Cross-Origin-Opener-Policy') ||
+        err.message?.includes('closed')
+      ) {
+        console.warn('Popup blocked or hindered by COOP policy, attempting signInWithRedirect fallback...', err);
+        await signInWithRedirect(auth, googleProvider);
+        return null as any;
+      }
       set({ error: err.message, isLoading: false });
       throw err;
     }

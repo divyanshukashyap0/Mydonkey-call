@@ -169,8 +169,11 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
     };
 
     pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {
-        console.warn(`⚠️ WebRTC ICE connection ${pc.iceConnectionState} for peer ${targetUserId}. Triggering ICE restart...`);
+      if (pc.iceConnectionState === 'failed') {
+        const isPolite = currentUserId ? currentUserId < targetUserId : true;
+        if (!isPolite) return; // Only polite peer initiates automatic ICE restart to prevent dual offer collision
+
+        console.warn(`⚠️ WebRTC ICE connection failed for peer ${targetUserId}. Triggering ICE restart...`);
         pc.createOffer({ iceRestart: true })
           .then((offer) => pc.setLocalDescription(offer))
           .then(() => {
@@ -216,7 +219,6 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
       ignoreOfferRef.current.set(fromUserId, ignoreOffer);
 
       if (ignoreOffer) {
-        console.log(`Ignoring offer collision from ${fromUserId} (impolite peer)`);
         return;
       }
 
@@ -231,8 +233,10 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
         socket.emit('webrtc:answer', { targetUserId: fromUserId, sdp: answer });
-      } catch (err) {
-        console.error(`Error handling offer from ${fromUserId}:`, err);
+      } catch (err: any) {
+        if (err.name !== 'InvalidStateError') {
+          console.warn(`Handled offer negotiation from ${fromUserId}:`, err);
+        }
       }
     };
 
@@ -244,11 +248,11 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
         try {
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
           await processPendingCandidates(fromUserId);
-        } catch (err) {
-          console.error(`Error setting remote answer for ${fromUserId}:`, err);
+        } catch (err: any) {
+          if (err.name !== 'InvalidStateError') {
+            console.warn(`Handled remote answer for ${fromUserId}:`, err);
+          }
         }
-      } else {
-        console.warn(`Ignoring answer from ${fromUserId} because signalingState is '${pc.signalingState}' (expected 'have-local-offer')`);
       }
     };
 

@@ -14,7 +14,7 @@ const SEGMENTS_DIR = path.join(STORAGE_DIR, 'segments');
 if (!fs.existsSync(ORIGINAL_DIR)) fs.mkdirSync(ORIGINAL_DIR, { recursive: true });
 if (!fs.existsSync(SEGMENTS_DIR)) fs.mkdirSync(SEGMENTS_DIR, { recursive: true });
 
-async function appendChunkToCombinedFile(uploadId: string, chunkIndex: number) {
+async function appendChunkToCombinedFile(uploadId: string, chunkIndex: number, chunkSize: number) {
   try {
     const uploadDir = path.join(ORIGINAL_DIR, uploadId);
     const combinedPath = path.join(uploadDir, 'combined.mp4');
@@ -23,9 +23,14 @@ async function appendChunkToCombinedFile(uploadId: string, chunkIndex: number) {
     if (!fs.existsSync(chunkPath)) return;
 
     const chunkBuffer = await fs.promises.readFile(chunkPath);
-    await fs.promises.appendFile(combinedPath, chunkBuffer);
+    const fileHandle = await fs.promises.open(combinedPath, 'a+');
+    try {
+      await fileHandle.write(chunkBuffer, 0, chunkBuffer.length, chunkIndex * chunkSize);
+    } finally {
+      await fileHandle.close();
+    }
   } catch (err) {
-    console.warn(`Progressive chunk append warning [chunk ${chunkIndex}]:`, err);
+    console.warn(`Progressive chunk write warning [chunk ${chunkIndex}]:`, err);
   }
 }
 
@@ -150,10 +155,10 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
         });
 
         // Progressively append uploaded chunk bytes to combined.mp4 for instant streaming
-        await appendChunkToCombinedFile(upload.id, index);
+        await appendChunkToCombinedFile(upload.id, index, upload.chunkSize);
 
-        // Mark video as READY as soon as 2 chunks are uploaded so playback starts immediately
-        if (completedCount >= 2) {
+        // Mark video as READY as soon as 1 chunk is uploaded so playback starts immediately
+        if (completedCount >= 1) {
           const videoRecord = await prisma.video.findUnique({ where: { id: upload.videoId } });
           if (videoRecord && videoRecord.status === 'UPLOADING') {
             const updatedVideo = await prisma.video.update({

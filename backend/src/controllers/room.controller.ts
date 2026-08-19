@@ -143,27 +143,45 @@ export async function joinRoom(req: AuthRequest, res: Response) {
       return res.status(403).json({ error: 'Room is full' });
     }
 
-    // Upsert participant status
-    const participant = await prisma.roomParticipant.upsert({
-      where: {
-        roomId_userId: {
+    // Upsert participant status with P2002 race condition fallback
+    let participant;
+    try {
+      participant = await prisma.roomParticipant.upsert({
+        where: {
+          roomId_userId: {
+            roomId: room.id,
+            userId: req.user.id,
+          },
+        },
+        update: {
+          isOnline: true,
+        },
+        create: {
           roomId: room.id,
           userId: req.user.id,
+          role: room.hostId === req.user.id ? 'HOST' : 'PARTICIPANT',
+          isOnline: true,
         },
-      },
-      update: {
-        isOnline: true,
-      },
-      create: {
-        roomId: room.id,
-        userId: req.user.id,
-        role: room.hostId === req.user.id ? 'HOST' : 'PARTICIPANT',
-        isOnline: true,
-      },
-      include: {
-        user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } },
-      },
-    });
+        include: {
+          user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } },
+        },
+      });
+    } catch (upsertErr) {
+      participant = await prisma.roomParticipant.update({
+        where: {
+          roomId_userId: {
+            roomId: room.id,
+            userId: req.user.id,
+          },
+        },
+        data: {
+          isOnline: true,
+        },
+        include: {
+          user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } },
+        },
+      });
+    }
 
     syncRoomToFirestore(room).catch(() => {});
     syncParticipantToFirestore(normalizedCode, participant).catch(() => {});
