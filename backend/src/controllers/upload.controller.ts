@@ -14,6 +14,24 @@ const SEGMENTS_DIR = path.join(STORAGE_DIR, 'segments');
 if (!fs.existsSync(ORIGINAL_DIR)) fs.mkdirSync(ORIGINAL_DIR, { recursive: true });
 if (!fs.existsSync(SEGMENTS_DIR)) fs.mkdirSync(SEGMENTS_DIR, { recursive: true });
 
+function appendChunkToCombinedFile(uploadId: string, chunkIndex: number, chunkSize: number) {
+  try {
+    const uploadDir = path.join(ORIGINAL_DIR, uploadId);
+    const combinedPath = path.join(uploadDir, 'combined.mp4');
+    const chunkPath = path.join(uploadDir, `chunk_${String(chunkIndex).padStart(4, '0')}.part`);
+
+    if (!fs.existsSync(chunkPath)) return;
+
+    const chunkBuffer = fs.readFileSync(chunkPath);
+    const fd = fs.openSync(combinedPath, 'a+');
+    const writeOffset = chunkIndex * chunkSize;
+    fs.writeSync(fd, chunkBuffer, 0, chunkBuffer.length, writeOffset);
+    fs.closeSync(fd);
+  } catch (err) {
+    console.warn(`Progressive chunk append warning [chunk ${chunkIndex}]:`, err);
+  }
+}
+
 export async function initiateUpload(req: AuthRequest, res: Response) {
   try {
     if (!req.user) return res.status(401).json({ error: 'Authenticated user required' });
@@ -133,6 +151,21 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
           where: { id: upload.id },
           data: { completedChunks: completedCount },
         });
+
+        // Progressively append uploaded chunk bytes to combined.mp4 for instant streaming
+        appendChunkToCombinedFile(upload.id, index, upload.chunkSize);
+
+        // Mark video as READY as soon as 2 chunks are uploaded so playback starts immediately
+        if (completedCount >= 2) {
+          const videoRecord = await prisma.video.findUnique({ where: { id: upload.videoId } });
+          if (videoRecord && videoRecord.status === 'UPLOADING') {
+            const updatedVideo = await prisma.video.update({
+              where: { id: upload.videoId },
+              data: { status: 'READY' },
+            });
+            syncVideoMetadataToFirestore(updatedVideo).catch(() => {});
+          }
+        }
 
         // If all chunks uploaded, trigger combined assembly & FFmpeg background processing
         if (completedCount === upload.totalChunks) {

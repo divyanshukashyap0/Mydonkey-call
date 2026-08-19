@@ -47,15 +47,20 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
     setError('');
 
     try {
-      const uploaderInstance = new ResumableUploader(selectedFile, (p) => {
-        setProgress(p);
-      });
+      const socket = getSocket();
+      const uploaderInstance = new ResumableUploader(
+        selectedFile,
+        (p) => {
+          setProgress(p);
+        },
+        (earlyVideoId) => {
+          // Instantly start room video playback after 2 chunks (6MB) are ready on server
+          socket.emit('video:change', { videoId: earlyVideoId });
+        }
+      );
       setUploader(uploaderInstance);
 
       const { videoId } = await uploaderInstance.start();
-
-      // Emit video:change with uploaded video ID to room
-      const socket = getSocket();
       socket.emit('video:change', { videoId });
     } catch (err: any) {
       setError(err.message || 'Upload failed');

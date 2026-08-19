@@ -22,11 +22,14 @@ export class ResumableUploader {
   private isPaused: boolean = false;
   private startTime: number = 0;
   private uploadedBytesSnapshot: number = 0;
+  private hasTriggeredEarlyReady: boolean = false;
   private onProgress: (progress: UploadProgress) => void;
+  private onEarlyReady?: (videoId: string) => void;
 
-  constructor(file: File, onProgress: (progress: UploadProgress) => void) {
+  constructor(file: File, onProgress: (progress: UploadProgress) => void, onEarlyReady?: (videoId: string) => void) {
     this.file = file;
     this.onProgress = onProgress;
+    this.onEarlyReady = onEarlyReady;
   }
 
   public async start(): Promise<{ videoId: string }> {
@@ -114,6 +117,13 @@ export class ResumableUploader {
             this.completedChunks.add(index);
             success = true;
             this.emitProgress('UPLOADING');
+
+            if (this.completedChunks.size >= 2 && !this.hasTriggeredEarlyReady && this.videoId) {
+              this.hasTriggeredEarlyReady = true;
+              if (this.onEarlyReady) {
+                this.onEarlyReady(this.videoId);
+              }
+            }
           } else {
             attempts++;
             await new Promise((r) => setTimeout(r, 1000));
