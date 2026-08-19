@@ -14,7 +14,7 @@ const SEGMENTS_DIR = path.join(STORAGE_DIR, 'segments');
 if (!fs.existsSync(ORIGINAL_DIR)) fs.mkdirSync(ORIGINAL_DIR, { recursive: true });
 if (!fs.existsSync(SEGMENTS_DIR)) fs.mkdirSync(SEGMENTS_DIR, { recursive: true });
 
-function appendChunkToCombinedFile(uploadId: string, chunkIndex: number, chunkSize: number) {
+async function appendChunkToCombinedFile(uploadId: string, chunkIndex: number) {
   try {
     const uploadDir = path.join(ORIGINAL_DIR, uploadId);
     const combinedPath = path.join(uploadDir, 'combined.mp4');
@@ -22,11 +22,8 @@ function appendChunkToCombinedFile(uploadId: string, chunkIndex: number, chunkSi
 
     if (!fs.existsSync(chunkPath)) return;
 
-    const chunkBuffer = fs.readFileSync(chunkPath);
-    const fd = fs.openSync(combinedPath, 'a+');
-    const writeOffset = chunkIndex * chunkSize;
-    fs.writeSync(fd, chunkBuffer, 0, chunkBuffer.length, writeOffset);
-    fs.closeSync(fd);
+    const chunkBuffer = await fs.promises.readFile(chunkPath);
+    await fs.promises.appendFile(combinedPath, chunkBuffer);
   } catch (err) {
     console.warn(`Progressive chunk append warning [chunk ${chunkIndex}]:`, err);
   }
@@ -153,7 +150,7 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
         });
 
         // Progressively append uploaded chunk bytes to combined.mp4 for instant streaming
-        appendChunkToCombinedFile(upload.id, index, upload.chunkSize);
+        await appendChunkToCombinedFile(upload.id, index);
 
         // Mark video as READY as soon as 2 chunks are uploaded so playback starts immediately
         if (completedCount >= 2) {
