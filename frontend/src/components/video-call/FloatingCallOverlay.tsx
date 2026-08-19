@@ -15,7 +15,7 @@ export const FloatingCallOverlay: React.FC = () => {
   const { participants, currentRoom } = useRoomStore();
   const [displayMode, setDisplayMode] = useState<'expanded' | 'collapsed' | 'hidden'>('expanded');
   const [snapCorner, setSnapCorner] = useState<SnapCorner>('top-right');
-  const [showSelfView, setShowSelfView] = useState(false);
+  const [showSelfView, setShowSelfView] = useState(true);
 
   const {
     localStream,

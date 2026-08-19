@@ -9,7 +9,7 @@ import { Video as VideoIcon } from 'lucide-react';
 export const VideoGrid: React.FC = () => {
   const { user } = useAuthStore();
   const { participants, currentRoom } = useRoomStore();
-  const [showSelfView, setShowSelfView] = useState(false);
+  const [showSelfView, setShowSelfView] = useState(true);
 
   const {
     localStream,
