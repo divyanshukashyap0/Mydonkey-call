@@ -84,6 +84,17 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
     const chunkPath = path.join(uploadDir, `chunk_${String(index).padStart(4, '0')}.part`);
 
     const writeStream = fs.createWriteStream(chunkPath);
+
+    writeStream.on('error', (err) => {
+      console.error('WriteStream error:', err);
+      if (!res.headersSent) res.status(500).json({ error: 'Failed to write chunk' });
+    });
+
+    req.on('error', (err) => {
+      console.error('Request stream error:', err);
+      writeStream.destroy();
+    });
+
     req.pipe(writeStream);
 
     writeStream.on('finish', async () => {

@@ -16,7 +16,7 @@ export class ResumableUploader {
   private file: File;
   private uploadId: string | null = null;
   private videoId: string | null = null;
-  private chunkSize: number = 10 * 1024 * 1024; // 10MB default
+  private chunkSize: number = 3 * 1024 * 1024; // 3MB default
   private totalChunks: number = 0;
   private completedChunks: Set<number> = new Set();
   private isPaused: boolean = false;

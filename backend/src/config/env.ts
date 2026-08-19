@@ -10,5 +10,5 @@ export const env = {
   DATABASE_URL: process.env.DATABASE_URL || 'file:./dev.db',
   JWT_SECRET: process.env.JWT_SECRET || 'mydonkey-super-secret-jwt-key-2026',
   SESSION_SECRET: process.env.SESSION_SECRET || 'mydonkey-session-secret',
-  DEFAULT_CHUNK_SIZE_MB: parseInt(process.env.DEFAULT_CHUNK_SIZE_MB || '10', 10),
+  DEFAULT_CHUNK_SIZE_MB: parseInt(process.env.DEFAULT_CHUNK_SIZE_MB || '3', 10),
 };
