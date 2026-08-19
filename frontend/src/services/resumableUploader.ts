@@ -32,6 +32,7 @@ export class ResumableUploader {
   public async start(): Promise<{ videoId: string }> {
     this.isPaused = false;
     this.startTime = Date.now();
+    this.emitProgress('UPLOADING');
 
     const token = localStorage.getItem('mydonkey_token');
     const initRes = await fetch(`${API_BASE}/uploads`, {

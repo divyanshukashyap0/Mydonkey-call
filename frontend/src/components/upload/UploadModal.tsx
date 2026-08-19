@@ -32,6 +32,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
   const [progress, setProgress] = useState<UploadProgress | null>(null);
   const [error, setError] = useState('');
 
+  const [isInitializing, setIsInitializing] = useState(false);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
@@ -40,7 +42,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
   };
 
   const startUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || isInitializing) return;
+    setIsInitializing(true);
+    setError('');
 
     try {
       const uploaderInstance = new ResumableUploader(selectedFile, (p) => {
@@ -55,6 +59,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
       socket.emit('video:change', { videoId });
     } catch (err: any) {
       setError(err.message || 'Upload failed');
+    } finally {
+      setIsInitializing(false);
     }
   };
 
@@ -96,8 +102,15 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
             <input type="file" accept="video/*" onChange={handleFileChange} style={{ display: 'none' }} />
           </label>
 
-          <button className="btn btn-primary" style={{ width: '100%', padding: '14px' }} disabled={!selectedFile} onClick={startUpload}>
-            Start Resumable Upload
+          <button className="btn btn-primary" style={{ width: '100%', padding: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }} disabled={!selectedFile || isInitializing} onClick={startUpload}>
+            {isInitializing ? (
+              <>
+                <RefreshCw size={18} className="spin" />
+                <span>Preparing Upload Session...</span>
+              </>
+            ) : (
+              <span>Start Resumable Upload</span>
+            )}
           </button>
         </div>
       ) : (
