@@ -130,12 +130,14 @@ export interface ServerToClientEvents {
   'room:countdown-tick': (data: { secondsRemaining: number }) => void;
   'room:countdown-cancelled': (data: { reason: string }) => void;
   'room:countdown-start': () => void;
+  'playback:state-sync': (data: { authoritativeState: AuthoritativePlaybackState; currentVideo: Video | null }) => void;
   'sync:pong': (data: { clientTime: number; serverTime: number }) => void;
   'upload:progress': (data: { progress: any; fileName: string; uploaderName: string }) => void;
   'error:message': (data: { message: string }) => void;
 }
 
 export interface ClientToServerEvents {
+  'room:sync-request': (data: { roomCode?: string }) => void;
   'room:join': (data: { roomCode: string; displayName?: string; password?: string }) => void;
   'room:leave': () => void;
   'playback:command': (data: { action: 'PLAY' | 'PAUSE' | 'SEEK' | 'RATE'; position: number; rate?: number; sequenceNumber?: number }) => void;

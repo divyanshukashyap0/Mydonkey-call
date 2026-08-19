@@ -276,6 +276,51 @@ export function setupSocketIO(io: SocketIOServer) {
       }
     });
 
+    // Manual Room & Playback Sync Handler
+    socket.on('room:sync-request', async ({ roomCode }) => {
+      try {
+        const targetCode = (roomCode || socket.currentRoomCode || '').toUpperCase().trim();
+        if (!targetCode) return;
+
+        const room = await prisma.room.findUnique({
+          where: { roomCode: targetCode },
+          include: { currentVideo: true },
+        });
+
+        if (!room) return;
+
+        const authoritativeState = {
+          state: room.playbackState as any,
+          position: room.playbackPosition,
+          playbackRate: room.playbackRate,
+          updatedAt: new Date(room.stateUpdatedAt).getTime(),
+          sequenceNumber: room.sequenceNumber,
+        };
+
+        const serializeVideo = (v: any) => ({
+          id: v.id,
+          sourceType: v.sourceType,
+          title: v.title,
+          youtubeUrl: v.youtubeUrl,
+          youtubeVideoId: v.youtubeVideoId,
+          originalFileName: v.originalFileName,
+          fileSize: v.fileSize ? Number(v.fileSize) : null,
+          duration: v.duration,
+          mimeType: v.mimeType,
+          status: v.status,
+          manifestUrl: v.manifestUrl,
+          thumbnailUrl: v.thumbnailUrl,
+        });
+
+        socket.emit('playback:state-sync', {
+          authoritativeState,
+          currentVideo: room.currentVideo ? serializeVideo(room.currentVideo) : null,
+        });
+      } catch (err) {
+        console.error('room:sync-request error:', err);
+      }
+    });
+
     // Chat Message Handler with Rate Limiting & Sanitization
     socket.on('chat:send', async ({ content }) => {
       try {

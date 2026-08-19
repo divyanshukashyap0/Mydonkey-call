@@ -147,6 +147,23 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
       useUploadStore.getState().setRemoteUploadProgress(data);
     });
 
+    socket.on('playback:state-sync', ({ authoritativeState, currentVideo: newVideo }) => {
+      if (authoritativeState) {
+        updatePlaybackSync(authoritativeState);
+      }
+      if (newVideo) {
+        updateCurrentVideo(newVideo as any, authoritativeState);
+      }
+      if (playerRef.current && authoritativeState) {
+        playerRef.current.seekTo(authoritativeState.position);
+        if (authoritativeState.state === 'PLAYING') {
+          playerRef.current.playVideo();
+        } else {
+          playerRef.current.pauseVideo();
+        }
+      }
+    });
+
     socket.on('error:message', ({ message }) => {
       console.warn('Room socket error:', message);
       if (!useRoomStore.getState().currentRoom) {
@@ -175,6 +192,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
       socket.off('chat:receive');
       socket.off('room:updated');
       socket.off('upload:progress');
+      socket.off('playback:state-sync');
       socket.off('error:message');
     };
   }, [roomCode, user]);
@@ -308,6 +326,23 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
     });
   };
 
+  const handleManualSync = () => {
+    const socket = getSocket();
+    socket.emit('room:sync-request', { roomCode });
+    if (playerRef.current && authoritativePlayback) {
+      const serverNow = getAdjustedServerTime();
+      let expectedPosition = authoritativePlayback.position;
+      if (authoritativePlayback.state === 'PLAYING') {
+        const elapsedSec = (serverNow - authoritativePlayback.updatedAt) / 1000;
+        expectedPosition += elapsedSec * authoritativePlayback.playbackRate;
+      }
+      playerRef.current.seekTo(expectedPosition, true);
+      if (authoritativePlayback.state === 'PLAYING') {
+        playerRef.current.playVideo();
+      }
+    }
+  };
+
   const toggleMute = () => {
     if (playerRef.current) {
       if (isMuted) playerRef.current.unMute();
@@ -364,11 +399,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
             currentUserId={user.id}
             isHost={currentRoom.hostId === user.id}
             participants={participants}
-            onSyncToRoom={() => {
-              if (playerRef.current && authoritativePlayback) {
-                playerRef.current.seekTo(authoritativePlayback.position);
-              }
-            }}
+            onSyncToRoom={handleManualSync}
           />
         )}
 
@@ -558,6 +589,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                   onRateChange={handleRateChange}
                   onToggleMute={toggleMute}
                   onToggleFullscreen={toggleFullscreen}
+                  onManualSync={handleManualSync}
                   onToggleFloatingChat={() => setShowFloatingChat(!showFloatingChat)}
                   onToggleFloatingParticipants={() => setShowFloatingParticipants(!showFloatingParticipants)}
                 />

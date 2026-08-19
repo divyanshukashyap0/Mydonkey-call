@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Clock, Play, Users, AlertCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Play, Users, AlertCircle, Zap } from 'lucide-react';
 import { RoomParticipant, Room } from '../../types';
 import { getSocket } from '../../services/socket';
 
@@ -160,6 +160,30 @@ export const ReadySystemBar: React.FC<ReadySystemBarProps> = ({
 
       {/* Action Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+        {onSyncToRoom && (
+          <button
+            onClick={onSyncToRoom}
+            style={{
+              padding: '6px 12px',
+              borderRadius: '8px',
+              border: '1px solid rgba(99, 102, 241, 0.4)',
+              background: 'rgba(99, 102, 241, 0.18)',
+              color: '#a5b4fc',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+            }}
+            title="Sync video stream with host and room"
+          >
+            <Zap size={14} color="#818cf8" />
+            <span>Sync Video</span>
+          </button>
+        )}
+
         <button
           onClick={handleToggleReady}
           style={{

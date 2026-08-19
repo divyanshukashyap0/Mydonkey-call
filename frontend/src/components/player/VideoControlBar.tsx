@@ -1,5 +1,4 @@
-import React from 'react';
-import { Play, Pause, Volume2, VolumeX, Maximize, Gauge, Zap, MessageSquare, Users } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Gauge, Zap, MessageSquare, Users, RefreshCw } from 'lucide-react';
 import { PlaybackState } from '../../types';
 
 interface VideoControlBarProps {
@@ -146,29 +145,35 @@ export const VideoControlBar: React.FC<VideoControlBarProps> = ({
             </select>
           </div>
 
-          {/* Sync Metric Badge & Sync Now Button */}
+          {/* Sync Latest Video Button */}
+          {onManualSync && (
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={onManualSync}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '4px 10px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                borderRadius: '99px',
+                background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)',
+                boxShadow: '0 0 12px rgba(99, 102, 241, 0.4)',
+                cursor: 'pointer',
+                border: 'none',
+              }}
+              title="Sync video to latest room playback position"
+            >
+              <RefreshCw size={13} />
+              <span>Sync Video</span>
+            </button>
+          )}
+
+          {/* Sync Metric Badge */}
           <div className="sync-badge" style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.7rem', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)', color: 'var(--success)', padding: '2px 8px', borderRadius: '99px', fontWeight: 600 }}>
             <Zap size={11} />
-            <span>Synced ({Math.abs(Math.round(driftMs))}ms)</span>
-            {onManualSync && (
-              <button
-                onClick={onManualSync}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--primary-light)',
-                  cursor: 'pointer',
-                  fontWeight: 700,
-                  fontSize: '0.68rem',
-                  textDecoration: 'underline',
-                  padding: 0,
-                  marginLeft: '2px',
-                }}
-                title="Force Playback Sync Now"
-              >
-                Sync Now
-              </button>
-            )}
+            <span>{Math.abs(Math.round(driftMs)) < 5000 ? `Synced (${Math.abs(Math.round(driftMs))}ms)` : 'Out of Sync'}</span>
           </div>
         </div>
 
