@@ -24,12 +24,24 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
+    let isMounted = true;
     if (videoRef.current && stream) {
       if (videoRef.current.srcObject !== stream) {
         videoRef.current.srcObject = stream;
       }
-      videoRef.current.play().catch((err) => console.warn('Video tile playback warning:', err));
+      const p = videoRef.current.play();
+      if (p !== undefined) {
+        p.catch((err: any) => {
+          if (isMounted && err.name !== 'AbortError' && err.name !== 'NotAllowedError') {
+            console.warn('Video tile playback warning:', err);
+          }
+        });
+      }
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [stream, isVideoOff]);
 
   return (

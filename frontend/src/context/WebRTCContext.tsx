@@ -108,12 +108,15 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
   const addOrQueueCandidate = async (targetUserId: string, candidate: RTCIceCandidateInit) => {
     const pc = pcsRef.current.get(targetUserId);
     if (!pc) return;
+    if (!candidate || (typeof candidate === 'object' && !candidate.candidate && candidate.candidate !== '')) return;
 
     if (pc.remoteDescription && pc.remoteDescription.type) {
       try {
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (err) {
-        console.warn(`ICE candidate add warning for ${targetUserId}:`, err);
+      } catch (err: any) {
+        if (err.name !== 'OperationError' && err.name !== 'InvalidStateError') {
+          console.warn(`ICE candidate add warning for ${targetUserId}:`, err);
+        }
       }
     } else {
       const currentQueue = pendingCandidatesRef.current.get(targetUserId) || [];
@@ -125,15 +128,18 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
   // Drain queued candidates after remote description is set
   const processPendingCandidates = async (targetUserId: string) => {
     const pc = pcsRef.current.get(targetUserId);
-    if (!pc) return;
+    if (!pc || !pc.remoteDescription) return;
     const queue = pendingCandidatesRef.current.get(targetUserId) || [];
     pendingCandidatesRef.current.delete(targetUserId);
 
     for (const cand of queue) {
+      if (!cand || (typeof cand === 'object' && !cand.candidate && cand.candidate !== '')) continue;
       try {
         await pc.addIceCandidate(new RTCIceCandidate(cand));
-      } catch (err) {
-        console.warn(`Draining ICE candidate warning for ${targetUserId}:`, err);
+      } catch (err: any) {
+        if (err.name !== 'OperationError' && err.name !== 'InvalidStateError') {
+          console.warn(`Draining ICE candidate warning for ${targetUserId}:`, err);
+        }
       }
     }
   };

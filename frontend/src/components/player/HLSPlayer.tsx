@@ -32,6 +32,8 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
 
     let isHlsLoaded = false;
 
+    let retryTimer: any = null;
+
     const setupNativePlayback = () => {
       if (!video) return;
       const targetUrl = fullManifestUrl.endsWith('source.mp4') ? fullManifestUrl : mp4StreamUrl;
@@ -41,6 +43,7 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
       }
 
       const handleLoaded = () => {
+        if (retryTimer) clearInterval(retryTimer);
         if (onReady) onReady(video);
       };
 
@@ -48,7 +51,18 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
       video.addEventListener('loadeddata', handleLoaded, { once: true });
 
       if (video.readyState >= 1 && onReady) {
+        if (retryTimer) clearInterval(retryTimer);
         onReady(video);
+      } else {
+        // If video container is still being written on backend, retry polling every 3.5s
+        retryTimer = setInterval(() => {
+          if (video && video.readyState < 1) {
+            video.load();
+          } else {
+            if (retryTimer) clearInterval(retryTimer);
+            if (video && onReady) onReady(video);
+          }
+        }, 3500);
       }
     };
 
@@ -93,6 +107,7 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
     }
 
     return () => {
+      if (retryTimer) clearInterval(retryTimer);
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
