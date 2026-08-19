@@ -87,7 +87,8 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
     pcsRef.current.forEach((pc, targetUserId) => {
       const existingSenders = pc.getSenders();
       let addedAny = false;
-      localStream.getTracks().forEach((track) => {
+      const sortedTracks = localStream.getTracks().sort((a, b) => a.kind.localeCompare(b.kind));
+      sortedTracks.forEach((track) => {
         const alreadyAdded = existingSenders.some((sender) => sender.track === track);
         if (!alreadyAdded) {
           pc.addTrack(track, localStream);
@@ -95,7 +96,7 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
         }
       });
 
-      if (addedAny && (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer')) {
+      if (addedAny && pc.signalingState === 'stable') {
         connectToPeer(targetUserId);
       }
     });
@@ -142,7 +143,8 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
       const activeStream = localStreamRef.current || localStream;
       if (activeStream) {
         const senders = existingPc.getSenders();
-        activeStream.getTracks().forEach((track) => {
+        const sortedTracks = activeStream.getTracks().sort((a, b) => a.kind.localeCompare(b.kind));
+        sortedTracks.forEach((track) => {
           if (!senders.some((s) => s.track === track)) {
             existingPc.addTrack(track, activeStream);
           }
@@ -156,7 +158,8 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
     const activeStream = localStreamRef.current || localStream;
 
     if (activeStream) {
-      activeStream.getTracks().forEach((track) => pc.addTrack(track, activeStream));
+      const sortedTracks = activeStream.getTracks().sort((a, b) => a.kind.localeCompare(b.kind));
+      sortedTracks.forEach((track) => pc.addTrack(track, activeStream));
     }
 
     pc.onicecandidate = (event) => {
@@ -305,7 +308,7 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
       isMakingOfferRef.current.set(targetUserId, true);
       const offer = await pc.createOffer();
 
-      if (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer') {
+      if (pc.signalingState === 'stable') {
         await pc.setLocalDescription(offer);
         getSocket().emit('webrtc:offer', { targetUserId, sdp: offer });
       }
