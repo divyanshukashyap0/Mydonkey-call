@@ -131,6 +131,14 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
             </div>
           </div>
 
+          {/* Live Streaming Notification Banner */}
+          {progress.currentChunk >= 2 && progress.status !== 'COMPLETED' && (
+            <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#6ee7b7', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Play size={16} color="var(--success)" />
+              <span><strong>Video stream live in room!</strong> Playing movie while remaining chunks upload in background.</span>
+            </div>
+          )}
+
           {/* Telemetry Metrics Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--bg-input)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
             <div>Uploaded: <strong style={{ color: 'var(--text-main)' }}>{formatBytes(progress.uploadedBytes)} / {formatBytes(progress.totalBytes)}</strong></div>
@@ -142,10 +150,18 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
           {/* Control Actions */}
           <div style={{ display: 'flex', gap: '10px' }}>
             {progress.status === 'UPLOADING' && (
-              <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleTogglePause}>
-                <Pause size={16} />
-                <span>Pause Upload</span>
-              </button>
+              <>
+                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleTogglePause}>
+                  <Pause size={16} />
+                  <span>Pause</span>
+                </button>
+                {progress.currentChunk >= 2 && (
+                  <button className="btn btn-primary" style={{ flex: 1.5 }} onClick={onClose}>
+                    <Play size={16} />
+                    <span>Watch Movie Now</span>
+                  </button>
+                )}
+              </>
             )}
             {progress.status === 'PAUSED' && (
               <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleTogglePause}>

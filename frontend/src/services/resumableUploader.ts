@@ -88,57 +88,74 @@ export class ResumableUploader {
     await this.uploadLoop();
   }
 
-  private async uploadLoop() {
-    const token = localStorage.getItem('mydonkey_token');
+  private async uploadSingleChunk(index: number, token: string | null): Promise<boolean> {
+    if (this.isPaused || this.completedChunks.has(index)) return true;
 
-    for (let index = 0; index < this.totalChunks; index++) {
-      if (this.isPaused) return;
-      if (this.completedChunks.has(index)) continue;
+    const start = index * this.chunkSize;
+    const end = Math.min(this.file.size, start + this.chunkSize);
+    const chunkBlob = this.file.slice(start, end);
 
-      const start = index * this.chunkSize;
-      const end = Math.min(this.file.size, start + this.chunkSize);
-      const chunkBlob = this.file.slice(start, end);
+    let attempts = 0;
+    while (attempts < 3 && !this.isPaused) {
+      try {
+        const res = await fetch(`${API_BASE}/uploads/${this.uploadId}/chunks/${index}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: chunkBlob,
+        });
 
-      let attempts = 0;
-      let success = false;
+        if (res.ok) {
+          this.completedChunks.add(index);
+          this.emitProgress('UPLOADING');
 
-      while (attempts < 3 && !success && !this.isPaused) {
-        try {
-          const res = await fetch(`${API_BASE}/uploads/${this.uploadId}/chunks/${index}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/octet-stream',
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: chunkBlob,
-          });
-
-          if (res.ok) {
-            this.completedChunks.add(index);
-            success = true;
-            this.emitProgress('UPLOADING');
-
-            if (this.completedChunks.size >= 2 && !this.hasTriggeredEarlyReady && this.videoId) {
-              this.hasTriggeredEarlyReady = true;
-              if (this.onEarlyReady) {
-                this.onEarlyReady(this.videoId);
-              }
+          if (this.completedChunks.size >= 2 && !this.hasTriggeredEarlyReady && this.videoId) {
+            this.hasTriggeredEarlyReady = true;
+            if (this.onEarlyReady) {
+              this.onEarlyReady(this.videoId);
             }
-          } else {
-            attempts++;
-            await new Promise((r) => setTimeout(r, 1000));
           }
-        } catch (err) {
+          return true;
+        } else {
           attempts++;
-          await new Promise((r) => setTimeout(r, 1000));
+          await new Promise((r) => setTimeout(r, 500));
         }
-      }
-
-      if (!success && !this.isPaused) {
-        this.emitProgress('FAILED', 'Upload chunk failed after multiple retries.');
-        throw new Error(`Failed to upload chunk ${index}`);
+      } catch (err) {
+        attempts++;
+        await new Promise((r) => setTimeout(r, 500));
       }
     }
+    return false;
+  }
+
+  private async uploadLoop() {
+    const token = localStorage.getItem('mydonkey_token');
+    const CONCURRENCY = 3; // 3 Parallel chunk upload streams
+
+    const pendingIndexes = Array.from({ length: this.totalChunks }, (_, i) => i).filter(
+      (idx) => !this.completedChunks.has(idx)
+    );
+
+    const worker = async () => {
+      while (pendingIndexes.length > 0 && !this.isPaused) {
+        const idx = pendingIndexes.shift();
+        if (idx !== undefined) {
+          const success = await this.uploadSingleChunk(idx, token);
+          if (!success && !this.isPaused) {
+            this.emitProgress('FAILED', `Failed to upload chunk ${idx}`);
+            throw new Error(`Failed to upload chunk ${idx}`);
+          }
+        }
+      }
+    };
+
+    const workers = Array.from(
+      { length: Math.min(CONCURRENCY, pendingIndexes.length) },
+      () => worker()
+    );
+    await Promise.all(workers);
 
     if (this.completedChunks.size === this.totalChunks) {
       this.emitProgress('COMPLETED');
