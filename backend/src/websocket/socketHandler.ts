@@ -122,15 +122,19 @@ export function setupSocketIO(io: SocketIOServer) {
         const normalizedCode = roomCode.toUpperCase().trim();
 
         // Ensure user exists in database to satisfy foreign keys
-        await prisma.user.upsert({
-          where: { id: socket.user.id },
-          update: { displayName: socket.user.displayName },
-          create: {
-            id: socket.user.id,
-            displayName: socket.user.displayName,
-            isGuest: socket.user.isGuest,
-          },
-        });
+        try {
+          await prisma.user.upsert({
+            where: { id: socket.user.id },
+            update: { displayName: socket.user.displayName },
+            create: {
+              id: socket.user.id,
+              displayName: socket.user.displayName,
+              isGuest: socket.user.isGuest,
+            },
+          });
+        } catch (userErr) {
+          console.warn('User DB upsert warning during join:', userErr);
+        }
 
         const room = await prisma.room.findUnique({
           where: { roomCode: normalizedCode },
@@ -158,39 +162,48 @@ export function setupSocketIO(io: SocketIOServer) {
         socket.join(`user:${socket.user.id}`);
         socket.currentRoomCode = normalizedCode;
 
-        let participant;
+        let participant: any;
         try {
-          participant = await prisma.roomParticipant.upsert({
-            where: {
-              roomId_userId: {
+          participant = await prisma.roomParticipant.findFirst({
+            where: { roomId: room.id, userId: socket.user.id },
+            include: { user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } } },
+          });
+
+          if (!participant) {
+            participant = await prisma.roomParticipant.create({
+              data: {
                 roomId: room.id,
                 userId: socket.user.id,
+                role: room.hostId === socket.user.id ? 'HOST' : 'PARTICIPANT',
+                isOnline: true,
               },
+              include: { user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } } },
+            });
+          } else {
+            participant = await prisma.roomParticipant.update({
+              where: { id: participant.id },
+              data: { isOnline: true },
+              include: { user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } } },
+            });
+          }
+        } catch (participantErr) {
+          console.warn('Participant DB operation warning, using resilient fallback:', participantErr);
+          participant = {
+            id: `temp-${socket.user.id}`,
+            roomId: room.id,
+            userId: socket.user.id,
+            role: room.hostId === socket.user.id ? 'HOST' : 'PARTICIPANT',
+            joinedAt: new Date(),
+            isMuted: false,
+            isVideoOff: false,
+            isOnline: true,
+            user: {
+              id: socket.user.id,
+              displayName: socket.user.displayName,
+              avatarUrl: null,
+              isGuest: socket.user.isGuest,
             },
-            update: { isOnline: true },
-            create: {
-              roomId: room.id,
-              userId: socket.user.id,
-              role: room.hostId === socket.user.id ? 'HOST' : 'PARTICIPANT',
-              isOnline: true,
-            },
-            include: {
-              user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } },
-            },
-          });
-        } catch (upsertErr) {
-          participant = await prisma.roomParticipant.update({
-            where: {
-              roomId_userId: {
-                roomId: room.id,
-                userId: socket.user.id,
-              },
-            },
-            data: { isOnline: true },
-            include: {
-              user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } },
-            },
-          });
+          };
         }
 
         // Sync Room & Participant state to Cloud Firestore
@@ -211,15 +224,15 @@ export function setupSocketIO(io: SocketIOServer) {
           orderBy: { createdAt: 'asc' },
           take: 50,
           include: { sender: { select: { displayName: true } } },
-        });
+        }).catch(() => []);
 
         const chatHistory: ChatMessageType[] = dbMessages.map((m) => ({
           id: m.id,
           roomId: m.roomId,
           senderId: m.senderId,
-          senderName: m.sender.displayName,
+          senderName: m.sender?.displayName || 'User',
           content: m.content,
-          createdAt: m.createdAt.toISOString(),
+          createdAt: m.createdAt instanceof Date ? m.createdAt.toISOString() : new Date().toISOString(),
         }));
 
         const updatedParticipants = await prisma.roomParticipant.findMany({
@@ -227,24 +240,34 @@ export function setupSocketIO(io: SocketIOServer) {
           include: {
             user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } },
           },
-        });
+        }).catch(() => [participant]);
+
+        const safeISO = (d: any) => {
+          try {
+            if (!d) return new Date().toISOString();
+            if (d instanceof Date) return d.toISOString();
+            return new Date(d).toISOString();
+          } catch {
+            return new Date().toISOString();
+          }
+        };
 
         socket.emit('room:joined', {
           room: {
             ...room,
-            createdAt: room.createdAt.toISOString(),
-            expiresAt: room.expiresAt.toISOString(),
-            stateUpdatedAt: room.stateUpdatedAt.toISOString(),
+            createdAt: safeISO(room.createdAt),
+            expiresAt: safeISO(room.expiresAt),
+            stateUpdatedAt: safeISO(room.stateUpdatedAt),
             currentVideo: serializeVideo(room.currentVideo),
           } as any,
-          participant: { ...participant, joinedAt: participant.joinedAt.toISOString() } as any,
-          participants: updatedParticipants.map(p => ({ ...p, joinedAt: p.joinedAt.toISOString() })) as any,
+          participant: { ...participant, joinedAt: safeISO(participant.joinedAt) } as any,
+          participants: updatedParticipants.map((p) => ({ ...p, joinedAt: safeISO(p.joinedAt) })) as any,
           authoritativeState,
           chatHistory,
         });
 
         socket.to(roomSocketName).emit('room:user-joined', {
-          participant: { ...participant, joinedAt: participant.joinedAt.toISOString() } as any,
+          participant: { ...participant, joinedAt: safeISO(participant.joinedAt) } as any,
         });
 
       } catch (err: any) {
