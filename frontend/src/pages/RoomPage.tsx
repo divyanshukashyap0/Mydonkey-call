@@ -185,8 +185,11 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
 
       const playerTime = playerRef.current.getCurrentTime() || 0;
       setCurrentTime(playerTime);
-      const playerDuration = playerRef.current.getDuration() || 0;
-      setDuration(playerDuration);
+      const rawDuration = playerRef.current.getDuration() || 0;
+      const validDuration = (rawDuration > 0 && rawDuration !== 3600 && rawDuration !== 86400)
+        ? rawDuration
+        : (currentVideo?.duration || rawDuration);
+      setDuration(validDuration);
 
       const serverNow = getAdjustedServerTime();
       let expectedPosition = authoritativePlayback.position;

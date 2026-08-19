@@ -23,11 +23,13 @@ export class ResumableUploader {
   private startTime: number = 0;
   private uploadedBytesSnapshot: number = 0;
   private hasTriggeredEarlyReady: boolean = false;
+  private duration: number | null = null;
   private onProgress: (progress: UploadProgress) => void;
   private onEarlyReady?: (videoId: string) => void;
 
-  constructor(file: File, onProgress: (progress: UploadProgress) => void, onEarlyReady?: (videoId: string) => void) {
+  constructor(file: File, onProgress: (progress: UploadProgress) => void, onEarlyReady?: (videoId: string) => void, duration?: number | null) {
     this.file = file;
+    this.duration = duration || null;
     this.onProgress = onProgress;
     this.onEarlyReady = onEarlyReady;
   }
@@ -48,6 +50,7 @@ export class ResumableUploader {
         fileName: this.file.name,
         fileSize: this.file.size,
         mimeType: this.file.type,
+        duration: this.duration,
       }),
     });
 

@@ -34,20 +34,25 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
 
     const setupNativePlayback = () => {
       if (!video) return;
-      video.src = mp4StreamUrl;
-      video.load();
+      const targetUrl = fullManifestUrl.endsWith('source.mp4') ? fullManifestUrl : mp4StreamUrl;
+      if (video.src !== targetUrl) {
+        video.src = targetUrl;
+        video.load();
+      }
 
-      const handleLoadedMetadata = () => {
+      const handleLoaded = () => {
         if (onReady) onReady(video);
       };
 
-      video.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+      video.addEventListener('loadedmetadata', handleLoaded, { once: true });
+      video.addEventListener('loadeddata', handleLoaded, { once: true });
+
       if (video.readyState >= 1 && onReady) {
         onReady(video);
       }
     };
 
-    if (Hls.isSupported()) {
+    if (Hls.isSupported() && fullManifestUrl.endsWith('.m3u8')) {
       const hls = new Hls({
         maxBufferLength: 30,
         maxMaxBufferLength: 60,
@@ -74,7 +79,7 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
           setupNativePlayback();
         }
       });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    } else if (video.canPlayType('application/vnd.apple.mpegurl') && fullManifestUrl.endsWith('.m3u8')) {
       video.src = fullManifestUrl;
       video.addEventListener('loadedmetadata', () => {
         if (onReady) onReady(video);

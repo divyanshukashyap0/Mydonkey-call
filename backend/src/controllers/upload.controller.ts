@@ -53,13 +53,15 @@ export async function initiateUpload(req: AuthRequest, res: Response) {
   try {
     if (!req.user) return res.status(401).json({ error: 'Authenticated user required' });
 
-    const { fileName, fileSize, mimeType } = req.body;
+    const { fileName, fileSize, mimeType, duration } = req.body;
     if (!fileName || !fileSize) {
       return res.status(400).json({ error: 'fileName and fileSize are required' });
     }
 
     const chunkSize = env.DEFAULT_CHUNK_SIZE_MB * 1024 * 1024; // e.g. 10MB
     const totalChunks = Math.ceil(fileSize / chunkSize);
+
+    const parsedDuration = duration && !isNaN(Number(duration)) && Number(duration) > 0 ? Number(duration) : null;
 
     const video = await prisma.video.create({
       data: {
@@ -68,6 +70,7 @@ export async function initiateUpload(req: AuthRequest, res: Response) {
         title: fileName,
         originalFileName: fileName,
         fileSize: BigInt(fileSize),
+        duration: parsedDuration,
         mimeType: mimeType || 'video/mp4',
         status: 'UPLOADING',
       },
@@ -302,8 +305,17 @@ export async function streamVideoFile(req: Request, res: Response) {
 
     if (combinedPath) {
       if (subPath.endsWith('.m3u8') || subPath === 'index.m3u8') {
+        const videoRecord = await prisma.video.findUnique({ where: { id: videoId } }).catch(() => null);
+        const realDuration = (videoRecord && videoRecord.duration && videoRecord.duration > 0) ? Number(videoRecord.duration) : 0;
+
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-        const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:3600\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:3600.0,\nsource.mp4\n#EXT-X-ENDLIST\n`;
+        if (realDuration > 0) {
+          const targetDur = Math.ceil(realDuration);
+          const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:${targetDur}\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:${realDuration.toFixed(1)},\nsource.mp4\n#EXT-X-ENDLIST\n`;
+          return res.send(m3u8Content);
+        }
+
+        const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:86400\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:86400.0,\nsource.mp4\n#EXT-X-ENDLIST\n`;
         return res.send(m3u8Content);
       }
 
