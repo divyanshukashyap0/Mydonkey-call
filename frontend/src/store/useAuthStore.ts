@@ -193,7 +193,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           displayName: name,
           isGuest: true,
         };
-      } catch {
+      } catch (fbErr: any) {
+        console.warn('Firebase Anonymous auth is disabled or unwhitelisted. Falling back to backend guest session API...', fbErr?.message || fbErr);
         const res = await api.guest(name);
         tokenStr = res.token;
         appUser = res.user;
