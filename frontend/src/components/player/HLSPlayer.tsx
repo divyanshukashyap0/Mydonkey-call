@@ -47,6 +47,17 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
         if (onReady) onReady(video);
       };
 
+      const handleError = () => {
+        if (video.error) {
+          console.error('⚠️ Video Player Error Event:', {
+            code: video.error.code,
+            message: video.error.message,
+            src: video.src,
+          });
+        }
+      };
+
+      video.addEventListener('error', handleError);
       video.addEventListener('loadedmetadata', handleLoaded, { once: true });
       video.addEventListener('loadeddata', handleLoaded, { once: true });
 
@@ -90,11 +101,18 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
       });
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
-        if (data.fatal && !isHlsLoaded) {
-          console.warn('HLS manifest loading failed, falling back to native MP4 stream:', data);
-          hls.destroy();
-          hlsRef.current = null;
-          setupNativePlayback();
+        if (data.fatal) {
+          console.error('⚠️ HLS Playback Fatal Error:', {
+            type: data.type,
+            details: data.details,
+            fatal: data.fatal,
+            url: fullManifestUrl,
+          });
+          if (!isHlsLoaded) {
+            hls.destroy();
+            hlsRef.current = null;
+            setupNativePlayback();
+          }
         }
       });
     } else if (video.canPlayType('application/vnd.apple.mpegurl') && fullManifestUrl.endsWith('.m3u8')) {

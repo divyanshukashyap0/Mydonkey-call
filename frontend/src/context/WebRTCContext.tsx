@@ -62,7 +62,7 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
           setMediaError(null);
         }
       } catch (err: any) {
-        console.warn('Camera/Microphone access error:', err.message);
+        console.error('⚠️ Camera/Microphone access error:', err.message || err);
         if (isMounted) {
           setMediaError('Camera or Microphone access was denied or unavailable.');
         }
