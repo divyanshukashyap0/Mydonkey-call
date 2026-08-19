@@ -49,7 +49,20 @@ async function appendChunkToCombinedFile(uploadId: string, videoId: string, chun
   }
 }
 
+function ensureCorsHeaders(req: Request, res: Response) {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, DELETE, OPTIONS, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Access-Control-Allow-Headers, Content-Type, Authorization, Origin, Accept, Range, Content-Range');
+}
+
 export async function initiateUpload(req: AuthRequest, res: Response) {
+  ensureCorsHeaders(req, res);
   try {
     if (!req.user) return res.status(401).json({ error: 'Authenticated user required' });
 
@@ -114,11 +127,13 @@ export async function initiateUpload(req: AuthRequest, res: Response) {
     });
   } catch (error: any) {
     console.error('Initiate upload error:', error);
+    ensureCorsHeaders(req, res);
     return res.status(500).json({ error: 'Failed to initiate upload' });
   }
 }
 
 export async function uploadChunk(req: AuthRequest, res: Response) {
+  ensureCorsHeaders(req, res);
   try {
     const { uploadId, chunkIndex } = req.params;
     const index = parseInt(chunkIndex, 10);
@@ -135,6 +150,7 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
 
     writeStream.on('error', (err) => {
       console.error('WriteStream error:', err);
+      ensureCorsHeaders(req, res);
       if (!res.headersSent) res.status(500).json({ error: 'Failed to write chunk' });
     });
 
@@ -207,6 +223,7 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
         return res.json({ success: true, chunkIndex: index, completedChunks: completedCount });
       } catch (err: any) {
         console.error(`Upload chunk ${index} finish processing error:`, err);
+        ensureCorsHeaders(req, res);
         if (!res.headersSent) {
           return res.status(500).json({ error: 'Failed to process upload chunk' });
         }
@@ -214,6 +231,7 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
     });
   } catch (error: any) {
     console.error('Upload chunk error:', error);
+    ensureCorsHeaders(req, res);
     if (!res.headersSent) {
       return res.status(500).json({ error: 'Failed to upload chunk' });
     }

@@ -48,12 +48,9 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
       };
 
       const handleError = () => {
-        if (video.error) {
-          console.error('⚠️ Video Player Error Event:', {
-            code: video.error.code,
-            message: video.error.message,
-            src: video.src,
-          });
+        // Only log real errors when video has metadata or non-transient failures
+        if (video.error && video.readyState >= 1 && video.error.code !== 4) {
+          console.warn('Video stream buffering notice:', video.error.message);
         }
       };
 
