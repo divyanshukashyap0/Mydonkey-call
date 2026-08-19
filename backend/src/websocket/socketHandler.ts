@@ -649,7 +649,7 @@ export function setupSocketIO(io: SocketIOServer) {
 
     // WebRTC Signaling Relay - Direct 1-to-1 Peer Relay
     socket.on('webrtc:offer', ({ targetUserId, sdp }) => {
-      if (!socket.user || !socket.currentRoomCode || !targetUserId) return;
+      if (!socket.user || !targetUserId) return;
       io.to(`user:${targetUserId}`).emit('webrtc:offer', {
         fromUserId: socket.user.id,
         sdp,
@@ -657,7 +657,7 @@ export function setupSocketIO(io: SocketIOServer) {
     });
 
     socket.on('webrtc:answer', ({ targetUserId, sdp }) => {
-      if (!socket.user || !socket.currentRoomCode || !targetUserId) return;
+      if (!socket.user || !targetUserId) return;
       io.to(`user:${targetUserId}`).emit('webrtc:answer', {
         fromUserId: socket.user.id,
         sdp,
@@ -665,7 +665,7 @@ export function setupSocketIO(io: SocketIOServer) {
     });
 
     socket.on('webrtc:ice', ({ targetUserId, candidate }) => {
-      if (!socket.user || !socket.currentRoomCode || !targetUserId) return;
+      if (!socket.user || !targetUserId) return;
       io.to(`user:${targetUserId}`).emit('webrtc:ice', {
         fromUserId: socket.user.id,
         candidate,

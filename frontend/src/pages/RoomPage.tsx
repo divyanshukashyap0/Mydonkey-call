@@ -8,6 +8,7 @@ import { VideoGrid } from '../components/video-call/VideoGrid';
 import { FloatingCallOverlay } from '../components/video-call/FloatingCallOverlay';
 import { ChatPanel } from '../components/chat/ChatPanel';
 import { HostControlsModal } from '../components/room/HostControlsModal';
+import { WebRTCProvider } from '../context/WebRTCContext';
 import { HLSPlayer } from '../components/player/HLSPlayer';
 import { UploadModal } from '../components/upload/UploadModal';
 import { ConnectionHealthBadge } from '../components/room/ConnectionHealthBadge';
@@ -60,6 +61,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
   const [isMuted, setIsMuted] = useState(false);
   const [driftMs, setDriftMs] = useState(0);
   const stageRef = useRef<HTMLDivElement>(null);
+  const { isFullscreen, showControls, toggleFullscreen } = useFullscreen(stageRef);
   const isProgrammaticActionRef = useRef(false);
 
   const canControl =
@@ -108,7 +110,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
           useSocialStore.getState().recordHistory({
             roomCode,
             videoTitle: video.title || `Video (${video.id})`,
-            sourceType: video.sourceType,
+            sourceType: video.sourceType || 'UPLOADED',
             youtubeUrl: video.youtubeUrl || undefined,
             thumbnail: video.youtubeVideoId ? `https://img.youtube.com/vi/${video.youtubeVideoId}/hqdefault.jpg` : undefined,
           });
@@ -308,16 +310,6 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
     socket.emit('video:change', { youtubeUrl });
   };
 
-  const toggleFullscreen = () => {
-    if (stageRef.current) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen();
-      } else {
-        stageRef.current.requestFullscreen();
-      }
-    }
-  };
-
   if (loading) {
     return (
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--bg-dark)' }}>
@@ -353,7 +345,8 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
   const currentVideo = currentRoom?.currentVideo;
 
   return (
-    <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-dark)' }}>
+    <WebRTCProvider currentUserId={user?.id}>
+      <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-dark)' }}>
       <Navbar onOpenCreateModal={() => setIsHostSettingsOpen(true)} />
 
       {/* Top Controls Bar (Ready System + Connection Health + Debug Console) */}
@@ -418,7 +411,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                     playerRef.current = {
                       getCurrentTime: () => videoEl.currentTime,
                       getDuration: () => videoEl.duration || 0,
-                      playVideo: () => videoEl.play(),
+                      playVideo: () => videoEl.play().catch((err) => console.warn('Autoplay prevented until user interacts with the page:', err)),
                       pauseVideo: () => videoEl.pause(),
                       seekTo: (sec: number) => { videoEl.currentTime = sec; },
                       setPlaybackRate: (r: number) => { videoEl.playbackRate = r; },
@@ -449,11 +442,31 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
               )}
 
               {/* Floating WebRTC Video Call Overlay (Active in Normal & Fullscreen Modes) */}
-              <FloatingCallOverlay />
+              <div
+                style={{
+                  opacity: isFullscreen && !showControls ? 0 : 1,
+                  pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
+                  transition: 'opacity 0.3s ease-in-out',
+                }}
+              >
+                <FloatingCallOverlay />
+              </div>
 
               {/* Fullscreen Floating Chat Drawer */}
               {showFloatingChat && (
-                <div style={{ position: 'absolute', top: '16px', left: '16px', width: 'min(90vw, 320px)', height: 'calc(100% - 100px)', zIndex: 'var(--z-fullscreen-overlay)' }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '16px',
+                    left: '16px',
+                    width: 'min(90vw, 320px)',
+                    height: 'calc(100% - 100px)',
+                    zIndex: 'var(--z-fullscreen-overlay)',
+                    opacity: isFullscreen && !showControls ? 0 : 1,
+                    pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
+                    transition: 'opacity 0.3s ease-in-out',
+                  }}
+                >
                   <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Room Chat</span>
@@ -470,7 +483,19 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
 
               {/* Fullscreen Floating Participants Drawer */}
               {showFloatingParticipants && (
-                <div style={{ position: 'absolute', top: '16px', left: '16px', width: 'min(90vw, 300px)', height: 'calc(100% - 100px)', zIndex: 'var(--z-fullscreen-overlay)' }}>
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '16px',
+                    left: '16px',
+                    width: 'min(90vw, 300px)',
+                    height: 'calc(100% - 100px)',
+                    zIndex: 'var(--z-fullscreen-overlay)',
+                    opacity: isFullscreen && !showControls ? 0 : 1,
+                    pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
+                    transition: 'opacity 0.3s ease-in-out',
+                  }}
+                >
                   <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                       <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Participants</span>
@@ -488,23 +513,32 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
 
             {/* Video Control Bar */}
             {currentVideo && (
-              <VideoControlBar
-                playbackState={authoritativePlayback?.state || 'PAUSED'}
-                currentTime={currentTime}
-                duration={duration}
-                playbackRate={authoritativePlayback?.playbackRate || 1.0}
-                isMuted={isMuted}
-                driftMs={driftMs}
-                canControl={canControl}
-                onPlay={handleUserPlay}
-                onPause={handleUserPause}
-                onSeek={handleUserSeek}
-                onRateChange={handleRateChange}
-                onToggleMute={toggleMute}
-                onToggleFullscreen={toggleFullscreen}
-                onToggleFloatingChat={() => setShowFloatingChat(!showFloatingChat)}
-                onToggleFloatingParticipants={() => setShowFloatingParticipants(!showFloatingParticipants)}
-              />
+              <div
+                style={{
+                  opacity: isFullscreen && !showControls ? 0 : 1,
+                  pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
+                  transition: 'opacity 0.3s ease-in-out',
+                  width: '100%',
+                }}
+              >
+                <VideoControlBar
+                  playbackState={authoritativePlayback?.state || 'PAUSED'}
+                  currentTime={currentTime}
+                  duration={duration}
+                  playbackRate={authoritativePlayback?.playbackRate || 1.0}
+                  isMuted={isMuted}
+                  driftMs={driftMs}
+                  canControl={canControl}
+                  onPlay={handleUserPlay}
+                  onPause={handleUserPause}
+                  onSeek={handleUserSeek}
+                  onRateChange={handleRateChange}
+                  onToggleMute={toggleMute}
+                  onToggleFullscreen={toggleFullscreen}
+                  onToggleFloatingChat={() => setShowFloatingChat(!showFloatingChat)}
+                  onToggleFloatingParticipants={() => setShowFloatingParticipants(!showFloatingParticipants)}
+                />
+              </div>
             )}
           </div>
 
@@ -662,6 +696,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
         timeDelta={driftMs / 1000}
       />
     </div>
+    </WebRTCProvider>
   );
 };
 

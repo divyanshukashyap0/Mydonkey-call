@@ -17,22 +17,13 @@ export async function regenerateSegmentOnDemand(roomId: string, videoId: string,
     return true;
   }
 
-  // Step 2: Search for original combined.mp4 source file
+  // Step 2: Search for original combined.mp4 source file for this videoId
   const originalDir = path.join(STORAGE_DIR, 'original');
-  if (!fs.existsSync(originalDir)) return false;
+  const { prisma } = await import('../../db/prisma');
+  const upload = await prisma.upload.findUnique({ where: { videoId } }).catch(() => null);
+  const combinedFilePath = upload ? path.join(originalDir, upload.id, 'combined.mp4') : null;
 
-  const uploadDirs = fs.readdirSync(originalDir);
-  let combinedFilePath: string | null = null;
-
-  for (const uploadId of uploadDirs) {
-    const candidate = path.join(originalDir, uploadId, 'combined.mp4');
-    if (fs.existsSync(candidate)) {
-      combinedFilePath = candidate;
-      break;
-    }
-  }
-
-  if (!combinedFilePath) {
+  if (!combinedFilePath || !fs.existsSync(combinedFilePath)) {
     console.warn(`Cannot regenerate segment ${segmentNumber}: Original movie file no longer available.`);
     return false;
   }

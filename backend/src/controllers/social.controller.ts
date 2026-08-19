@@ -7,15 +7,17 @@ export async function recordWatchHistory(req: AuthRequest, res: Response) {
   try {
     if (!req.user) return res.status(401).json({ error: 'Not authenticated' });
     const { roomCode, videoTitle, sourceType, youtubeUrl, thumbnail } = req.body;
+    const effectiveTitle = videoTitle || 'Untitled Video';
+    const effectiveSourceType = sourceType || 'UPLOADED';
 
-    if (!roomCode || !videoTitle || !sourceType) {
-      return res.status(400).json({ error: 'roomCode, videoTitle, and sourceType are required' });
+    if (!roomCode) {
+      return res.status(400).json({ error: 'roomCode is required' });
     }
 
     await saveWatchHistoryItem(req.user.id, {
       roomCode,
-      videoTitle,
-      sourceType,
+      videoTitle: effectiveTitle,
+      sourceType: effectiveSourceType,
       youtubeUrl,
       thumbnail,
       watchedAt: new Date().toISOString(),

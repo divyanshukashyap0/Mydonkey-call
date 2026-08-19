@@ -25,7 +25,10 @@ export const VideoTile: React.FC<VideoTileProps> = ({
 
   useEffect(() => {
     if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+      if (videoRef.current.srcObject !== stream) {
+        videoRef.current.srcObject = stream;
+      }
+      videoRef.current.play().catch((err) => console.warn('Video tile playback warning:', err));
     }
   }, [stream, isVideoOff]);
 
@@ -51,7 +54,13 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         {!isVideoOff && stream ? (
           <motion.video
             key="video-feed"
-            ref={videoRef}
+            ref={(node) => {
+              (videoRef as any).current = node;
+              if (node && stream && node.srcObject !== stream) {
+                node.srcObject = stream;
+                node.play().catch(() => {});
+              }
+            }}
             autoPlay
             playsInline
             muted={isLocal}

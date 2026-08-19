@@ -58,10 +58,13 @@ export const AdminPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (user?.role === 'admin' || user || token) {
+    if (user?.role === 'admin') {
       loadData();
+    } else {
+      setLoading(false);
+      setErrorMsg('Admin role required');
     }
-  }, [user?.role, token]);
+  }, [user?.role]);
 
   const handleToggleSelfAdmin = async () => {
     try {

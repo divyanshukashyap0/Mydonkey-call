@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, RefObject } from 'react';
+import { useState, useEffect, useCallback, useRef, RefObject } from 'react';
 
 export interface UseFullscreenResult {
   isFullscreen: boolean;
@@ -12,10 +12,17 @@ export interface UseFullscreenResult {
 export function useFullscreen(elementRef: RefObject<HTMLElement>): UseFullscreenResult {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [showControls, setShowControls] = useState<boolean>(true);
+  const timeoutRef = useRef<any>(null);
 
-  // Auto-hide controls timeout
   const resetControlsTimeout = useCallback(() => {
     setShowControls(true);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    // Auto-hide controls after 5 seconds (5000ms) of inactivity
+    timeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 5000);
   }, []);
 
   const handleFullscreenChange = useCallback(() => {
@@ -26,9 +33,10 @@ export function useFullscreen(elementRef: RefObject<HTMLElement>): UseFullscreen
       doc.mozFullScreenElement ||
       doc.msFullscreenElement;
 
-    const isFull = !!fullscreenElement && fullscreenElement === elementRef.current;
+    const isFull = !!fullscreenElement && (elementRef.current ? fullscreenElement === elementRef.current : true);
     setIsFullscreen(isFull);
-  }, [elementRef]);
+    resetControlsTimeout();
+  }, [elementRef, resetControlsTimeout]);
 
   useEffect(() => {
     const doc = document as any;
@@ -45,16 +53,31 @@ export function useFullscreen(elementRef: RefObject<HTMLElement>): UseFullscreen
     };
   }, [handleFullscreenChange]);
 
-  // Controls auto-hide timer after 3.5s inactivity when playing/fullscreen
+  // Handle user mouse movement / keypress / touch events to reset the 5s timer
   useEffect(() => {
-    if (!showControls) return;
+    const elem = elementRef.current || document;
 
-    const timer = setTimeout(() => {
-      setShowControls(false);
-    }, 3500);
+    const handleActivity = () => {
+      resetControlsTimeout();
+    };
 
-    return () => clearTimeout(timer);
-  }, [showControls]);
+    elem.addEventListener('mousemove', handleActivity as any);
+    elem.addEventListener('mousedown', handleActivity as any);
+    elem.addEventListener('touchstart', handleActivity as any);
+    elem.addEventListener('keydown', handleActivity as any);
+
+    resetControlsTimeout();
+
+    return () => {
+      elem.removeEventListener('mousemove', handleActivity as any);
+      elem.removeEventListener('mousedown', handleActivity as any);
+      elem.removeEventListener('touchstart', handleActivity as any);
+      elem.removeEventListener('keydown', handleActivity as any);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [elementRef, isFullscreen, resetControlsTimeout]);
 
   const enterFullscreen = useCallback(async () => {
     if (!elementRef.current) return;

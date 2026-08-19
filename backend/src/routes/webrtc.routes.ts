@@ -4,6 +4,6 @@ import { authenticateToken } from '../middleware/auth';
 
 const router = Router();
 
-router.get('/ice-servers', authenticateToken, getIceServers);
+router.get('/ice-servers', getIceServers);
 
 export default router;

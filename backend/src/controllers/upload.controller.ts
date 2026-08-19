@@ -240,20 +240,21 @@ export async function streamVideoFile(req: Request, res: Response) {
               const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
               const chunkSize = end - start + 1;
               const file = fs.createReadStream(combinedPath, { start, end });
-              const head = {
+
+              res.status(206);
+              res.set({
                 'Content-Range': `bytes ${start}-${end}/${fileSize}`,
                 'Accept-Ranges': 'bytes',
-                'Content-Length': chunkSize,
+                'Content-Length': chunkSize.toString(),
                 'Content-Type': 'video/mp4',
-              };
-              res.writeHead(206, head);
+              });
               return file.pipe(res);
             } else {
-              const head = {
-                'Content-Length': fileSize,
+              res.status(200);
+              res.set({
+                'Content-Length': fileSize.toString(),
                 'Content-Type': 'video/mp4',
-              };
-              res.writeHead(200, head);
+              });
               return fs.createReadStream(combinedPath).pipe(res);
             }
           } catch (fileErr) {
