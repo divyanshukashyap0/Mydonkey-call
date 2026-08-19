@@ -55,6 +55,7 @@ export class ResumableUploader {
     this.videoId = initData.videoId;
     this.chunkSize = initData.chunkSize;
     this.totalChunks = initData.totalChunks;
+    this.emitProgress('UPLOADING');
 
     await this.uploadLoop();
     return { videoId: this.videoId! };
