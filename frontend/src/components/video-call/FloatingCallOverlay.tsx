@@ -170,48 +170,51 @@ export const FloatingCallOverlay: React.FC<FloatingCallOverlayProps> = ({
             position: 'absolute',
             ...getPositionStyles(),
             zIndex: 'var(--z-floating-call)',
-            width: 'min(90vw, 320px)',
-            background: 'rgba(10, 13, 20, 0.85)',
-            backdropFilter: 'blur(16px)',
-            WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid var(--border-color)',
-            borderRadius: 'var(--radius-lg)',
-            padding: '10px',
-            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.6)',
+            width: isFullscreen ? 'min(90vw, 240px)' : 'min(90vw, 300px)',
+            background: 'rgba(12, 16, 28, 0.82)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid rgba(255, 255, 255, 0.14)',
+            borderRadius: '16px',
+            padding: '12px',
+            boxShadow: '0 16px 48px rgba(0, 0, 0, 0.65)',
             display: 'flex',
             flexDirection: 'column',
             gap: '8px',
-            maxHeight: 'calc(100% - 100px)',
+            maxHeight: 'calc(100% - 80px)',
             overflow: 'hidden',
           }}
         >
           {/* Header Bar */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '6px', borderBottom: '1px solid var(--border-color)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent)' }}>
-              <Video size={16} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 800, color: '#a5b4fc' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981' }} />
+              <Video size={15} color="#818cf8" />
               <span>Live Call ({participants.length})</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <button
-                onClick={cycleSnapCorner}
-                title="Reposition overlay corner"
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
-              >
-                <Move size={14} />
-              </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {!isFullscreen && (
+                <button
+                  onClick={cycleSnapCorner}
+                  title="Reposition overlay corner"
+                  style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '3px' }}
+                >
+                  <Move size={13} />
+                </button>
+              )}
               <button
                 onClick={() => setDisplayMode('collapsed')}
                 title="Collapse overlay"
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '3px' }}
               >
-                <ChevronUp size={16} />
+                <ChevronUp size={15} />
               </button>
               <button
                 onClick={() => setDisplayMode('hidden')}
                 title="Hide overlay"
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '2px' }}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.6)', cursor: 'pointer', padding: '3px' }}
               >
-                <EyeOff size={14} />
+                <EyeOff size={13} />
               </button>
             </div>
           </div>

@@ -57,15 +57,17 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         minWidth: '110px',
         maxWidth: isMaximized ? '100%' : '180px',
         aspectRatio: '16 / 10',
-        borderRadius: 'var(--radius-md)',
+        borderRadius: '12px',
         overflow: 'hidden',
-        background: 'var(--bg-input)',
-        border: '1px solid var(--border-color)',
+        background: 'linear-gradient(145deg, rgba(20, 26, 43, 0.95) 0%, rgba(10, 14, 24, 0.95) 100%)',
+        border: isHost ? '1px solid rgba(99, 102, 241, 0.45)' : '1px solid rgba(255, 255, 255, 0.12)',
+        boxShadow: isHost ? '0 4px 20px rgba(99, 102, 241, 0.25)' : '0 4px 18px rgba(0, 0, 0, 0.5)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
         cursor: onMaximize ? 'pointer' : 'default',
+        transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease',
       }}
     >
       {onMaximize && (
@@ -77,13 +79,14 @@ export const VideoTile: React.FC<VideoTileProps> = ({
           title={isMaximized ? 'Minimize video screen' : 'Maximize video screen'}
           style={{
             position: 'absolute',
-            top: '4px',
-            right: '4px',
+            top: '6px',
+            right: '6px',
             zIndex: 15,
-            background: 'rgba(0, 0, 0, 0.65)',
-            backdropFilter: 'blur(8px)',
+            background: 'rgba(0, 0, 0, 0.55)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
             border: '1px solid rgba(255, 255, 255, 0.2)',
-            borderRadius: '6px',
+            borderRadius: '8px',
             width: '24px',
             height: '24px',
             display: 'flex',
@@ -92,6 +95,7 @@ export const VideoTile: React.FC<VideoTileProps> = ({
             color: '#fff',
             cursor: 'pointer',
             padding: 0,
+            transition: 'transform 0.15s ease, background 0.15s ease',
           }}
         >
           {isMaximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
@@ -121,32 +125,78 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         {(isVideoOff || !stream) && (
           <motion.div
             key="camera-off-avatar"
-            initial={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.15 }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
+            exit={{ opacity: 0, scale: 0.85 }}
+            transition={{ duration: 0.2 }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
           >
-            <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: isHost ? 'var(--primary)' : 'var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.95rem' }}>
+            <div
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                background: isHost
+                  ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
+                  : 'linear-gradient(135deg, #334155 0%, #1e293b 100%)',
+                border: '2px solid rgba(255, 255, 255, 0.15)',
+                boxShadow: isHost ? '0 0 14px rgba(99, 102, 241, 0.5)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 800,
+                fontSize: '1rem',
+                color: '#fff',
+              }}
+            >
               {displayName.charAt(0).toUpperCase()}
             </div>
-            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Camera Off</span>
+            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.55)', letterSpacing: '0.3px' }}>
+              Cam Off
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Name Overlay & Badges */}
-      <div style={{ position: 'absolute', bottom: '4px', left: '6px', right: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
-        <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.8)', background: 'rgba(0,0,0,0.5)', padding: '1px 6px', borderRadius: '4px', maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      {/* Sleek Glass Name Overlay & Badges */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '5px',
+          left: '6px',
+          right: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          zIndex: 10,
+          background: 'rgba(10, 14, 24, 0.65)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          padding: '2px 7px',
+          borderRadius: '6px',
+        }}
+      >
+        <span
+          style={{
+            fontSize: '0.68rem',
+            fontWeight: 700,
+            color: '#fff',
+            maxWidth: '85px',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
           {isLocal ? 'You' : displayName}
         </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
-          {isHost && <ShieldCheck size={12} color="var(--warning)" />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+          {isHost && <span title="Host"><ShieldCheck size={12} color="#fbbf24" /></span>}
           {isCoHost && !isHost && <span style={{ fontSize: '0.65rem' }}>⭐</span>}
           <AnimatePresence>
             {isMuted && (
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
-                <MicOff size={12} color="var(--danger)" />
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} title="Muted">
+                <MicOff size={11} color="#ef4444" />
               </motion.div>
             )}
           </AnimatePresence>

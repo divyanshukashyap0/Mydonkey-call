@@ -25,40 +25,86 @@ export const MediaControlsBar: React.FC<MediaControlsBarProps> = ({
       style={{
         display: 'flex',
         flexDirection: vertical ? 'column' : 'row',
-        alignItems: 'stretch',
-        gap: '8px',
+        alignItems: 'center',
+        gap: '6px',
         width: vertical ? '100%' : 'auto',
         justifyContent: 'center',
+        padding: vertical ? '6px 0' : '0',
       }}
     >
       <button
-        className={`btn btn-sm ${isMuted ? 'btn-danger' : 'btn-secondary'}`}
         onClick={onToggleMic}
         title={isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
-        style={{ justifyContent: 'center' }}
+        style={{
+          padding: vertical ? '6px 12px' : '6px 14px',
+          borderRadius: '8px',
+          border: isMuted ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
+          background: isMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+          color: isMuted ? '#fca5a5' : '#e2e8f0',
+          fontWeight: 700,
+          fontSize: '0.8rem',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          width: vertical ? '100%' : 'auto',
+          transition: 'all 0.2s ease',
+          backdropFilter: 'blur(8px)',
+        }}
       >
-        {isMuted ? <MicOff size={16} /> : <Mic size={16} />}
+        {isMuted ? <MicOff size={15} color="#ef4444" /> : <Mic size={15} color="#818cf8" />}
         <span>{isMuted ? 'Unmute' : 'Mute'}</span>
       </button>
 
       <button
-        className={`btn btn-sm ${isVideoOff ? 'btn-danger' : 'btn-secondary'}`}
         onClick={onToggleCamera}
         title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
-        style={{ justifyContent: 'center' }}
+        style={{
+          padding: vertical ? '6px 12px' : '6px 14px',
+          borderRadius: '8px',
+          border: isVideoOff ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
+          background: isVideoOff ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+          color: isVideoOff ? '#fca5a5' : '#e2e8f0',
+          fontWeight: 700,
+          fontSize: '0.8rem',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          width: vertical ? '100%' : 'auto',
+          transition: 'all 0.2s ease',
+          backdropFilter: 'blur(8px)',
+        }}
       >
-        {isVideoOff ? <VideoOff size={16} /> : <VideoIcon size={16} />}
+        {isVideoOff ? <VideoOff size={15} color="#ef4444" /> : <VideoIcon size={15} color="#34d399" />}
         <span>{isVideoOff ? 'Cam Off' : 'Cam On'}</span>
       </button>
 
       {onToggleSelfView && (
         <button
-          className={`btn btn-sm ${showSelfView ? 'btn-primary' : 'btn-secondary'}`}
           onClick={onToggleSelfView}
           title={showSelfView ? 'Hide Self Camera Preview' : 'Show Self Camera Preview'}
-          style={{ justifyContent: 'center' }}
+          style={{
+            padding: vertical ? '6px 12px' : '6px 14px',
+            borderRadius: '8px',
+            border: showSelfView ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
+            background: showSelfView ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+            color: showSelfView ? '#a5b4fc' : '#e2e8f0',
+            fontWeight: 700,
+            fontSize: '0.8rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            width: vertical ? '100%' : 'auto',
+            transition: 'all 0.2s ease',
+            backdropFilter: 'blur(8px)',
+          }}
         >
-          <User size={16} />
+          <User size={15} color={showSelfView ? '#818cf8' : '#94a3b8'} />
           <span>{showSelfView ? 'Self On' : 'Self Off'}</span>
         </button>
       )}
