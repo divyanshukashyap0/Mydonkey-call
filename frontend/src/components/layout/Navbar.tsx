@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Tv, LogOut, User as UserIcon, Plus, DoorOpen, LogIn, Users, History, Shield, Menu, X, Settings } from 'lucide-react';
+import { Tv, LogOut, User as UserIcon, Plus, DoorOpen, LogIn, Users, History, Shield, Menu, X, Settings, Lock, Unlock } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useRoomStore } from '../../store/useRoomStore';
+import { getSocket } from '../../services/socket';
 import { AuthModal } from '../auth/AuthModal';
 import { SocialDashboardModal } from '../social/SocialDashboardModal';
 
@@ -85,7 +86,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
                 <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>({copied ? 'Copied ✓' : 'Copy'})</span>
               </motion.div>
               {user?.id === currentRoom.hostId && (
-                <button className="btn btn-secondary btn-sm" onClick={onOpenCreateModal} title="Host Settings">
+                <button
+                  className={`btn btn-sm ${currentRoom.isLocked ? 'btn-danger' : 'btn-secondary'}`}
+                  onClick={() => getSocket().emit('room:toggle-lock')}
+                  title={currentRoom.isLocked ? 'Unlock Room (Allow new participants to join)' : 'Lock Room (Prevent new participants from joining)'}
+                >
+                  {currentRoom.isLocked ? <Lock size={16} /> : <Unlock size={16} />}
+                  <span>{currentRoom.isLocked ? 'Locked' : 'Lock Room'}</span>
+                </button>
+              )}
+              {user?.id === currentRoom.hostId && onOpenCreateModal && (
+                <button className="btn btn-secondary btn-sm" onClick={onOpenCreateModal}>
                   <Settings size={16} />
                   <span>Host Settings</span>
                 </button>

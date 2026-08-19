@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, Clock, Play, Users, AlertCircle, Zap } from 'lucide-react';
+import { CheckCircle2, Clock, Play, Users, AlertCircle, Zap, Lock, Unlock } from 'lucide-react';
 import { RoomParticipant, Room } from '../../types';
 import { getSocket } from '../../services/socket';
 
@@ -64,6 +64,11 @@ export const ReadySystemBar: React.FC<ReadySystemBarProps> = ({
     setIsReady(nextState);
     const socket = getSocket();
     socket.emit('participant:toggle-ready', { isReady: nextState });
+  };
+
+  const handleToggleLock = () => {
+    const socket = getSocket();
+    socket.emit('room:toggle-lock');
   };
 
   const handleOverrideStart = () => {
@@ -160,6 +165,30 @@ export const ReadySystemBar: React.FC<ReadySystemBarProps> = ({
 
       {/* Action Controls */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        {isHost && (
+          <button
+            onClick={handleToggleLock}
+            style={{
+              padding: '6px 14px',
+              borderRadius: '8px',
+              border: `1px solid ${room.isLocked ? 'rgba(239, 68, 68, 0.5)' : 'rgba(255, 255, 255, 0.2)'}`,
+              background: room.isLocked ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.08)',
+              color: room.isLocked ? '#fca5a5' : '#fff',
+              fontWeight: 700,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              transition: 'all 0.2s ease',
+              boxShadow: room.isLocked ? '0 0 12px rgba(239, 68, 68, 0.3)' : 'none',
+            }}
+            title={room.isLocked ? 'Unlock Room (Allow new participants to join)' : 'Lock Room (Prevent new participants from joining)'}
+          >
+            {room.isLocked ? <Lock size={15} color="#ef4444" /> : <Unlock size={15} />}
+            <span>{room.isLocked ? 'Room Locked' : 'Lock Room'}</span>
+          </button>
+        )}
 
         {onSyncToRoom && (
           <button

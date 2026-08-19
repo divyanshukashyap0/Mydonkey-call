@@ -321,6 +321,32 @@ export function setupSocketIO(io: SocketIOServer) {
       }
     });
 
+    // Lock / Unlock Room Toggle Handler (Host Only)
+    socket.on('room:toggle-lock', async () => {
+      try {
+        if (!socket.user || !socket.currentRoomCode) return;
+        const room = await prisma.room.findUnique({
+          where: { roomCode: socket.currentRoomCode },
+        });
+
+        if (!room) return;
+        if (room.hostId !== socket.user.id) {
+          socket.emit('error:message', { message: 'Only the room host can lock or unlock the room.' });
+          return;
+        }
+
+        const updatedRoom = await prisma.room.update({
+          where: { id: room.id },
+          data: { isLocked: !room.isLocked },
+        });
+
+        io.to(`room:${socket.currentRoomCode}`).emit('room:updated', { room: updatedRoom as any });
+        console.log(`🔒 Room ${socket.currentRoomCode} lock status changed to: ${updatedRoom.isLocked ? 'LOCKED' : 'UNLOCKED'}`);
+      } catch (err: any) {
+        console.error('room:toggle-lock error:', err.message);
+      }
+    });
+
     // Chat Message Handler with Rate Limiting & Sanitization
     socket.on('chat:send', async ({ content }) => {
       try {
