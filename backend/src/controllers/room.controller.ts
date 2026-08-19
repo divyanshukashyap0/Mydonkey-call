@@ -165,6 +165,9 @@ export async function joinRoom(req: AuthRequest, res: Response) {
       },
     });
 
+    syncRoomToFirestore(room).catch(() => {});
+    syncParticipantToFirestore(normalizedCode, participant).catch(() => {});
+
     return res.json({ room, participant });
   } catch (error: any) {
     console.error('Join Room Error:', error);
