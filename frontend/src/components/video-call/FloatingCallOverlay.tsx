@@ -14,10 +14,14 @@ import { MaximizedVideoModal } from './MaximizedVideoModal';
 
 interface FloatingCallOverlayProps {
   isFullscreen?: boolean;
+  onToggleChat?: () => void;
+  onToggleParticipants?: () => void;
 }
 
 export const FloatingCallOverlay: React.FC<FloatingCallOverlayProps> = ({
   isFullscreen = false,
+  onToggleChat,
+  onToggleParticipants,
 }) => {
   const { user } = useAuthStore();
   const { participants, currentRoom } = useRoomStore();
@@ -310,7 +314,7 @@ export const FloatingCallOverlay: React.FC<FloatingCallOverlayProps> = ({
           </div>
 
           {/* Media Controls Footer */}
-          <div style={{ paddingTop: '6px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'center' }}>
+          <div style={{ paddingTop: '6px', borderTop: '1px solid rgba(255, 255, 255, 0.1)', display: 'flex', justifyContent: 'center' }}>
             <MediaControlsBar
               isMuted={isMuted}
               isVideoOff={isVideoOff}
@@ -318,6 +322,8 @@ export const FloatingCallOverlay: React.FC<FloatingCallOverlayProps> = ({
               onToggleCamera={toggleCamera}
               showSelfView={showSelfView}
               onToggleSelfView={() => setShowSelfView(!showSelfView)}
+              onToggleChat={onToggleChat}
+              onToggleParticipants={onToggleParticipants}
               vertical={isFullscreen}
             />
           </div>

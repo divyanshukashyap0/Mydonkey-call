@@ -23,7 +23,7 @@ import { useSyncClock } from '../hooks/useSyncClock';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useSyncEngine } from '../hooks/useSyncEngine';
 import { connectSocket, getSocket } from '../services/socket';
-import { Tv, Sparkles, Plus, X, Terminal } from 'lucide-react';
+import { Tv, Sparkles, Plus, X, Terminal, ChevronLeft, ExternalLink, Minimize2, Users } from 'lucide-react';
 
 interface RoomPageProps {
   roomCode: string;
@@ -493,6 +493,121 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                 </div>
               )}
 
+              {/* Fullscreen Top Header Overlay Bar */}
+              {isFullscreen && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '64px',
+                    zIndex: 'var(--z-fullscreen-overlay)',
+                    padding: '0 24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: 'linear-gradient(to bottom, rgba(10, 14, 24, 0.85) 0%, rgba(10, 14, 24, 0) 100%)',
+                    opacity: !showControls ? 0 : 1,
+                    pointerEvents: !showControls ? 'none' : 'auto',
+                    transition: 'opacity 0.3s ease-in-out',
+                  }}
+                >
+                  {/* Left: Exit Fullscreen & Brand */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <button
+                      onClick={toggleFullscreen}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '4px',
+                      }}
+                      title="Exit Fullscreen"
+                    >
+                      <ChevronLeft size={22} />
+                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '1rem', color: '#fff', letterSpacing: '-0.3px' }}>
+                      <span style={{ fontSize: '1.2rem' }}>🫏</span>
+                      <span>mydonkey-call</span>
+                    </div>
+                  </div>
+
+                  {/* Right: Quick Action Controls */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <button
+                      onClick={() => {
+                        if (currentRoom) navigator.clipboard.writeText(window.location.href);
+                      }}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        borderRadius: '20px',
+                        padding: '5px 14px',
+                        color: '#fff',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backdropFilter: 'blur(10px)',
+                      }}
+                      title="Copy Shareable Room Link"
+                    >
+                      <ExternalLink size={14} />
+                      <span>Copy Link</span>
+                    </button>
+
+                    <button
+                      onClick={() => setShowFloatingParticipants(!showFloatingParticipants)}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        borderRadius: '20px',
+                        padding: '5px 12px',
+                        color: '#fff',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        backdropFilter: 'blur(10px)',
+                      }}
+                      title="Room Participants"
+                    >
+                      <Users size={14} />
+                      <span>{participants.length}</span>
+                    </button>
+
+                    <button
+                      onClick={toggleFullscreen}
+                      style={{
+                        background: 'rgba(255, 255, 255, 0.08)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        borderRadius: '10px',
+                        width: '32px',
+                        height: '32px',
+                        color: '#fff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backdropFilter: 'blur(10px)',
+                      }}
+                      title="Exit Fullscreen"
+                    >
+                      <Minimize2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Floating WebRTC Video Call Overlay (Active ONLY in Fullscreen Mode) */}
               {isFullscreen && (
                 <div
@@ -502,7 +617,11 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                     transition: 'opacity 0.3s ease-in-out',
                   }}
                 >
-                  <FloatingCallOverlay isFullscreen />
+                  <FloatingCallOverlay
+                    isFullscreen
+                    onToggleChat={() => setShowFloatingChat(!showFloatingChat)}
+                    onToggleParticipants={() => setShowFloatingParticipants(!showFloatingParticipants)}
+                  />
                 </div>
               )}
 
