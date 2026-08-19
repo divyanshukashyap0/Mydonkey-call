@@ -48,6 +48,12 @@ export const useSocialStore = create<SocialState>((set, get) => ({
   error: null,
 
   fetchSocialData: async () => {
+    const token = localStorage.getItem('mydonkey_token');
+    if (!token) {
+      set({ watchHistory: [], friends: [], pendingRequests: [], loading: false, error: null });
+      return;
+    }
+
     try {
       set({ loading: true, error: null });
       const [historyRes, friendsRes, requestsRes] = await Promise.all([
