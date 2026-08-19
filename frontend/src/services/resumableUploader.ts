@@ -1,3 +1,5 @@
+import { API_BASE } from '../config/apiConfig';
+
 export interface UploadProgress {
   percentage: number;
   uploadedBytes: number;
@@ -32,7 +34,7 @@ export class ResumableUploader {
     this.startTime = Date.now();
 
     const token = localStorage.getItem('mydonkey_token');
-    const initRes = await fetch('/api/uploads', {
+    const initRes = await fetch(`${API_BASE}/uploads`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -69,7 +71,7 @@ export class ResumableUploader {
 
     // Query status to get existing completed chunk indexes
     const token = localStorage.getItem('mydonkey_token');
-    const statusRes = await fetch(`/api/uploads/${this.uploadId}/status`, {
+    const statusRes = await fetch(`${API_BASE}/uploads/${this.uploadId}/status`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
 
@@ -97,7 +99,7 @@ export class ResumableUploader {
 
       while (attempts < 3 && !success && !this.isPaused) {
         try {
-          const res = await fetch(`/api/uploads/${this.uploadId}/chunks/${index}`, {
+          const res = await fetch(`${API_BASE}/uploads/${this.uploadId}/chunks/${index}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/octet-stream',

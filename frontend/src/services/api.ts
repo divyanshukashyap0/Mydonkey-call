@@ -1,6 +1,5 @@
 import { AuthResponse, User, Room, CreateRoomInput } from '../types';
-
-const API_BASE = '/api';
+import { API_BASE } from '../config/apiConfig';
 
 async function fetchJSON<T>(url: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('mydonkey_token');

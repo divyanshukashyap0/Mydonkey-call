@@ -46,6 +46,8 @@ export interface AdminVideo {
   ownerEmail: string;
 }
 
+import { API_BASE } from '../config/apiConfig';
+
 function getAuthHeaders() {
   const token = localStorage.getItem('mydonkey_token');
   return {
@@ -56,35 +58,35 @@ function getAuthHeaders() {
 
 export const adminApi = {
   async getStats(): Promise<AdminStats> {
-    const res = await fetch('/api/admin/stats', { headers: getAuthHeaders() });
+    const res = await fetch(`${API_BASE}/admin/stats`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch admin stats');
     const data = await res.json();
     return data.stats;
   },
 
   async getUsers(): Promise<AdminUser[]> {
-    const res = await fetch('/api/admin/users', { headers: getAuthHeaders() });
+    const res = await fetch(`${API_BASE}/admin/users`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch users');
     const data = await res.json();
     return data.users;
   },
 
   async getWatchHistory(): Promise<AdminWatchHistoryItem[]> {
-    const res = await fetch('/api/admin/watch-history', { headers: getAuthHeaders() });
+    const res = await fetch(`${API_BASE}/admin/watch-history`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch watch history');
     const data = await res.json();
     return data.watchHistory;
   },
 
   async getVideos(): Promise<AdminVideo[]> {
-    const res = await fetch('/api/admin/videos', { headers: getAuthHeaders() });
+    const res = await fetch(`${API_BASE}/admin/videos`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch videos');
     const data = await res.json();
     return data.videos;
   },
 
   async updateUserRole(userId: string, role: 'admin' | 'user'): Promise<void> {
-    const res = await fetch(`/api/admin/users/${userId}/role`, {
+    const res = await fetch(`${API_BASE}/admin/users/${userId}/role`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify({ role }),
@@ -93,7 +95,7 @@ export const adminApi = {
   },
 
   async toggleSelfAdmin(): Promise<{ role: string }> {
-    const res = await fetch('/api/admin/toggle-self', {
+    const res = await fetch(`${API_BASE}/admin/toggle-self`, {
       method: 'POST',
       headers: getAuthHeaders(),
     });
