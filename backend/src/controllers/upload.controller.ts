@@ -81,6 +81,8 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
     if (!upload) return res.status(404).json({ error: 'Upload session not found' });
 
     const uploadDir = path.join(ORIGINAL_DIR, upload.id);
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
     const chunkPath = path.join(uploadDir, `chunk_${String(index).padStart(4, '0')}.part`);
 
     const writeStream = fs.createWriteStream(chunkPath);
@@ -149,14 +151,11 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
         }
       }
     });
-
-    writeStream.on('error', (err) => {
-      console.error('Chunk write error:', err);
-      return res.status(500).json({ error: 'Failed to save upload chunk' });
-    });
   } catch (error: any) {
     console.error('Upload chunk error:', error);
-    return res.status(500).json({ error: 'Failed to upload chunk' });
+    if (!res.headersSent) {
+      return res.status(500).json({ error: 'Failed to upload chunk' });
+    }
   }
 }
 
