@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "npx prisma db push --skip-generate && node dist/server.js",
     "test": "tsx src/tests/syncMath.test.ts && tsx src/tests/segmentCleanup.test.ts",
     "db:push": "prisma db push",
     "db:generate": "prisma generate"
