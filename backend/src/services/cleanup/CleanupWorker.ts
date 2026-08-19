@@ -67,18 +67,20 @@ export class CleanupWorker {
 
       if (expiredVideos.length === 0) return;
 
-      console.log(`🧹 [10-Min Expiration] Found ${expiredVideos.length} expired uploaded video(s) to purge from DB and disk...`);
-
       for (const video of expiredVideos) {
-        console.log(`🗑️ Purging expired uploaded movie [${video.title}] (${video.id}) created at ${video.createdAt.toISOString()}...`);
-
-        // 1. Unlink current video from any active room
-        await prisma.room.updateMany({
+        // Check if any room is currently playing or attached to this video
+        const activeRoomCount = await prisma.room.count({
           where: { currentVideoId: video.id },
-          data: { currentVideoId: null },
-        }).catch(() => {});
+        });
 
-        // 2. Remove physical storage directories from disk
+        // NEVER delete a video while a watch party room is actively using it!
+        if (activeRoomCount > 0) {
+          continue;
+        }
+
+        console.log(`🗑️ Purging unattached/expired uploaded movie [${video.title}] (${video.id})...`);
+
+        // 1. Remove physical storage directories from disk
         if (video.upload?.id) {
           const uploadDir = path.join(ORIGINAL_DIR, video.upload.id);
           if (fs.existsSync(uploadDir)) {
@@ -96,12 +98,12 @@ export class CleanupWorker {
           fs.rmSync(segDir, { recursive: true, force: true });
         }
 
-        // 3. Delete database Video record (PostgreSQL cascade deletes Upload, UploadChunk, VideoSegment)
+        // 2. Delete database Video record (PostgreSQL cascade deletes Upload, UploadChunk, VideoSegment)
         await prisma.video.delete({
           where: { id: video.id },
         }).catch((err) => console.warn(`DB video delete warning for ${video.id}:`, err));
 
-        console.log(`✅ [10-Min Expiration Complete] Successfully deleted video [${video.title}] (${video.id}) from DB & disk.`);
+        console.log(`✅ [10-Min Expiration Complete] Successfully purged unattached video [${video.title}] (${video.id}) from DB & disk.`);
       }
     } catch (err: any) {
       console.error('Error during 10-minute uploaded video cleanup cycle:', err.message);
