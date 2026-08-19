@@ -10,12 +10,21 @@ import { floatingCallOverlay } from '../../animations';
 
 type SnapCorner = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
-export const FloatingCallOverlay: React.FC = () => {
+import { MaximizedVideoModal } from './MaximizedVideoModal';
+
+interface FloatingCallOverlayProps {
+  isFullscreen?: boolean;
+}
+
+export const FloatingCallOverlay: React.FC<FloatingCallOverlayProps> = ({
+  isFullscreen = false,
+}) => {
   const { user } = useAuthStore();
   const { participants, currentRoom } = useRoomStore();
   const [displayMode, setDisplayMode] = useState<'expanded' | 'collapsed' | 'hidden'>('expanded');
   const [snapCorner, setSnapCorner] = useState<SnapCorner>('top-right');
   const [showSelfView, setShowSelfView] = useState(true);
+  const [maximizedUser, setMaximizedUser] = useState<any | null>(null);
 
   const {
     localStream,
@@ -38,6 +47,14 @@ export const FloatingCallOverlay: React.FC = () => {
   };
 
   const getPositionStyles = (): React.CSSProperties => {
+    if (isFullscreen) {
+      return {
+        top: '50%',
+        right: '20px',
+        transform: 'translateY(-50%)',
+      };
+    }
+
     switch (snapCorner) {
       case 'top-left':
         return { top: '16px', left: '16px' };
@@ -231,13 +248,21 @@ export const FloatingCallOverlay: React.FC = () => {
                       isHost={isHost}
                       isMuted={p.isMuted}
                       isVideoOff={p.isVideoOff}
+                      onMaximize={() => setMaximizedUser({
+                        id: p.userId,
+                        stream: remoteStream,
+                        displayName,
+                        isHost,
+                        isMuted: p.isMuted,
+                        isVideoOff: p.isVideoOff,
+                      })}
                     />
                   </motion.div>
                 );
               })}
             </AnimatePresence>
 
-            {/* Local Participant Tile (Hidden Normally, Shown on Toggle) */}
+            {/* Local Participant Tile */}
             <AnimatePresence>
               {showSelfView && (
                 <motion.div
@@ -254,6 +279,15 @@ export const FloatingCallOverlay: React.FC = () => {
                     isHost={user?.id === currentRoom?.hostId}
                     isMuted={isMuted}
                     isVideoOff={isVideoOff}
+                    onMaximize={() => setMaximizedUser({
+                      id: 'local',
+                      stream: localStream,
+                      displayName: user?.displayName || 'You',
+                      isLocal: true,
+                      isHost: user?.id === currentRoom?.hostId,
+                      isMuted,
+                      isVideoOff,
+                    })}
                   />
                 </motion.div>
               )}
@@ -281,9 +315,24 @@ export const FloatingCallOverlay: React.FC = () => {
               onToggleCamera={toggleCamera}
               showSelfView={showSelfView}
               onToggleSelfView={() => setShowSelfView(!showSelfView)}
+              vertical={isFullscreen}
             />
           </div>
         </motion.div>
+      )}
+
+      {/* Maximized Camera Tile Modal */}
+      {maximizedUser && (
+        <MaximizedVideoModal
+          isOpen={!!maximizedUser}
+          onClose={() => setMaximizedUser(null)}
+          stream={maximizedUser.stream}
+          displayName={maximizedUser.displayName}
+          isLocal={maximizedUser.isLocal}
+          isHost={maximizedUser.isHost}
+          isMuted={maximizedUser.isMuted}
+          isVideoOff={maximizedUser.isVideoOff}
+        />
       )}
     </AnimatePresence>
   );

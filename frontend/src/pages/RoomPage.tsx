@@ -462,16 +462,18 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                 </div>
               )}
 
-              {/* Floating WebRTC Video Call Overlay (Active in Normal & Fullscreen Modes) */}
-              <div
-                style={{
-                  opacity: isFullscreen && !showControls ? 0 : 1,
-                  pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
-                  transition: 'opacity 0.3s ease-in-out',
-                }}
-              >
-                <FloatingCallOverlay />
-              </div>
+              {/* Floating WebRTC Video Call Overlay (Active ONLY in Fullscreen Mode) */}
+              {isFullscreen && (
+                <div
+                  style={{
+                    opacity: !showControls ? 0 : 1,
+                    pointerEvents: !showControls ? 'none' : 'auto',
+                    transition: 'opacity 0.3s ease-in-out',
+                  }}
+                >
+                  <FloatingCallOverlay isFullscreen />
+                </div>
+              )}
 
               {/* Fullscreen Floating Chat Drawer */}
               {showFloatingChat && (

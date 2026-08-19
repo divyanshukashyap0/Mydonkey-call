@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { MicOff, ShieldCheck } from 'lucide-react';
+import { MicOff, ShieldCheck, Maximize2, Minimize2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface VideoTileProps {
@@ -10,6 +10,8 @@ interface VideoTileProps {
   isCoHost?: boolean;
   isMuted?: boolean;
   isVideoOff?: boolean;
+  onMaximize?: () => void;
+  isMaximized?: boolean;
 }
 
 export const VideoTile: React.FC<VideoTileProps> = ({
@@ -20,6 +22,8 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   isCoHost = false,
   isMuted = false,
   isVideoOff = false,
+  onMaximize,
+  isMaximized = false,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -46,11 +50,12 @@ export const VideoTile: React.FC<VideoTileProps> = ({
 
   return (
     <div
+      onDoubleClick={onMaximize}
       style={{
         position: 'relative',
         width: '100%',
         minWidth: '110px',
-        maxWidth: '180px',
+        maxWidth: isMaximized ? '100%' : '180px',
         aspectRatio: '16 / 10',
         borderRadius: 'var(--radius-md)',
         overflow: 'hidden',
@@ -60,8 +65,38 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
+        cursor: onMaximize ? 'pointer' : 'default',
       }}
     >
+      {onMaximize && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onMaximize();
+          }}
+          title={isMaximized ? 'Minimize video screen' : 'Maximize video screen'}
+          style={{
+            position: 'absolute',
+            top: '4px',
+            right: '4px',
+            zIndex: 15,
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '6px',
+            width: '24px',
+            height: '24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            cursor: 'pointer',
+            padding: 0,
+          }}
+        >
+          {isMaximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+        </button>
+      )}
       <video
         ref={(node) => {
           (videoRef as any).current = node;
