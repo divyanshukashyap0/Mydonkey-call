@@ -24,11 +24,13 @@ app.use(express.json());
 
 // Root Info Route
 app.get('/', (req, res) => {
+  const host = req.get('host');
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   res.json({
     message: '🚀 MyDonkey Call Backend API Server',
     status: 'online',
-    frontendUrl: 'http://localhost:5173',
-    healthCheck: 'http://localhost:5000/api/health',
+    frontendUrl: env.CLIENT_URL,
+    healthCheck: `${protocol}://${host}/api/health`,
   });
 });
 
