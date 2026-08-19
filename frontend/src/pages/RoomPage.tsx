@@ -15,6 +15,7 @@ import { BackgroundUploadOverlay } from '../components/upload/BackgroundUploadOv
 import { ConnectionHealthBadge } from '../components/room/ConnectionHealthBadge';
 import { ReadySystemBar } from '../components/room/ReadySystemBar';
 import { DeveloperDebugModal } from '../components/debug/DeveloperDebugModal';
+import { EyeCatchingLoader } from '../components/common/EyeCatchingLoader';
 import { useRoomStore } from '../store/useRoomStore';
 import { useAuthStore } from '../store/useAuthStore';
 import { useUploadStore } from '../store/useUploadStore';
@@ -322,16 +323,12 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--bg-dark)' }}>
-        <Navbar />
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px', padding: '20px' }}>
-          <div className="pulse-glow" style={{ width: '64px', height: '64px', borderRadius: '20px', background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-            <Tv size={32} />
-          </div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Connecting to Watch Room...</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Room Code: <span className="mono" style={{ color: 'var(--accent)' }}>{roomCode}</span></p>
-        </div>
-      </div>
+      <EyeCatchingLoader
+        title="Joining Watch Room..."
+        subtitle={`Connecting to room ${roomCode}...`}
+        badgeText={`ROOM ${roomCode}`}
+        fullScreen
+      />
     );
   }
 

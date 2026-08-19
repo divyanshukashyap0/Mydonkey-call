@@ -27,12 +27,17 @@ export const BackgroundUploadOverlay: React.FC<BackgroundUploadOverlayProps> = (
   onOpenUploadModal,
 }) => {
   const { progress, activeFile, pauseUpload, resumeUpload, remoteUploadProgress } = useUploadStore();
+  const [isDismissed, setIsDismissed] = React.useState(false);
 
   const activeProgress = progress || remoteUploadProgress?.progress;
   const fileName = activeFile?.name || remoteUploadProgress?.fileName || 'Movie File';
   const isLocalUpload = !!progress;
 
-  if (!activeProgress) return null;
+  React.useEffect(() => {
+    setIsDismissed(false);
+  }, [activeFile?.name, remoteUploadProgress?.fileName]);
+
+  if (!activeProgress || isDismissed) return null;
 
   const isCompleted = activeProgress.status === 'COMPLETED';
 
@@ -80,7 +85,7 @@ export const BackgroundUploadOverlay: React.FC<BackgroundUploadOverlayProps> = (
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                maxWidth: '200px',
+                maxWidth: '180px',
               }}
             >
               {fileName}
@@ -91,9 +96,31 @@ export const BackgroundUploadOverlay: React.FC<BackgroundUploadOverlayProps> = (
           </div>
         </div>
 
-        <span className="mono" style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent, #60a5fa)' }}>
-          {activeProgress.percentage}%
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span className="mono" style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent, #60a5fa)' }}>
+            {activeProgress.percentage}%
+          </span>
+          <button
+            onClick={() => setIsDismissed(true)}
+            title="Hide Upload Overlay"
+            style={{
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '50%',
+              width: '22px',
+              height: '22px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'rgba(255, 255, 255, 0.7)',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              padding: 0,
+            }}
+          >
+            <X size={12} />
+          </button>
+        </div>
       </div>
 
       {/* Progress Bar */}

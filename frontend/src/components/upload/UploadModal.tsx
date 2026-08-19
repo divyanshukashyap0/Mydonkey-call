@@ -26,6 +26,7 @@ function formatETA(seconds: number): string {
 
 import { useUploadStore } from '../../store/useUploadStore';
 import { AnimatedModal } from '../common/AnimatedModal';
+import { EyeCatchingLoader } from '../common/EyeCatchingLoader';
 
 export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => {
   const { startUpload, pauseUpload, resumeUpload, progress, activeFile, isInitializing, error } = useUploadStore();
@@ -113,11 +114,12 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
           </label>
         </div>
       ) : isInitializing && !progress ? (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px', gap: '16px' }}>
-          <RefreshCw size={32} className="spin" color="var(--primary)" />
-          <div style={{ fontSize: '1rem', fontWeight: 600 }}>Initializing Instant Stream...</div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Preparing chunk stream for {activeFile?.name}...</div>
-        </div>
+        <EyeCatchingLoader
+          title="Initializing Stream..."
+          subtitle={`Preparing instant playback for ${activeFile?.name}...`}
+          badgeText="RESUMABLE CHUNK STREAM"
+          fullScreen={false}
+        />
       ) : progress ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Progress Bar */}

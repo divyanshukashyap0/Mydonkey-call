@@ -10,7 +10,57 @@
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <style>
+        .initial-loader {
+          height: 100vh;
+          height: 100dvh;
+          width: 100vw;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: radial-gradient(circle at 50% 40%, #0d121f 0%, #05070c 100%);
+          color: #f8fafc;
+          font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+        }
+        .initial-orb {
+          width: 80px;
+          height: 80px;
+          border-radius: 24px;
+          background: linear-gradient(135deg, #6366f1 0%, #06b6d4 100%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 0 40px rgba(99, 102, 241, 0.5);
+          animation: initialPulse 2s ease-in-out infinite alternate;
+          margin-bottom: 20px;
+        }
+        @keyframes initialPulse {
+          0% { transform: scale(0.95); box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
+          100% { transform: scale(1.05); box-shadow: 0 0 50px rgba(6, 182, 212, 0.7); }
+        }
+        .initial-title {
+          font-size: 1.5rem;
+          font-weight: 800;
+          background: linear-gradient(135deg, #a5b4fc, #06b6d4);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          margin-bottom: 8px;
+        }
+        .initial-sub {
+          font-size: 0.85rem;
+          color: #94a3b8;
+        }
+      </style>
+      <div class="initial-loader">
+        <div class="initial-orb">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"></rect><polyline points="17 2 12 7 7 2"></polyline></svg>
+        </div>
+        <div class="initial-title">MyDonkey Call</div>
+        <div class="initial-sub">Synchronized Watch Party & Live Video Calling</div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -16,6 +16,8 @@ const RoomRouteWrapper: React.FC = () => {
   return <RoomPage roomCode={roomCode.toUpperCase()} />;
 };
 
+import { EyeCatchingLoader } from './components/common/EyeCatchingLoader';
+
 const AppContent: React.FC = () => {
   const { initAuth, isLoading } = useAuthStore();
   const navigate = useNavigate();
@@ -26,9 +28,12 @@ const AppContent: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-dark)', color: 'var(--text-muted)' }}>
-        Loading MyDonkey Call...
-      </div>
+      <EyeCatchingLoader
+        title="MyDonkey Call"
+        subtitle="Synchronizing Watch Party & WebRTC Mesh Connection..."
+        badgeText="AUTHORITATIVE WATCH PARTY V2.0"
+        fullScreen
+      />
     );
   }
 
