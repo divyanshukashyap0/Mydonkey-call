@@ -50,33 +50,34 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         flexShrink: 0,
       }}
     >
-      <AnimatePresence mode="wait">
-        {!isVideoOff && stream ? (
-          <motion.video
-            key="video-feed"
-            ref={(node) => {
-              (videoRef as any).current = node;
-              if (node && stream && node.srcObject !== stream) {
-                node.srcObject = stream;
-                node.play().catch(() => {});
-              }
-            }}
-            autoPlay
-            playsInline
-            muted={isLocal}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', transform: isLocal ? 'scaleX(-1)' : 'none' }}
-          />
-        ) : (
+      <video
+        ref={(node) => {
+          (videoRef as any).current = node;
+          if (node && stream && node.srcObject !== stream) {
+            node.srcObject = stream;
+            node.play().catch(() => {});
+          }
+        }}
+        autoPlay
+        playsInline
+        muted={isLocal}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          transform: isLocal ? 'scaleX(-1)' : 'none',
+          display: !isVideoOff && stream ? 'block' : 'none',
+        }}
+      />
+
+      <AnimatePresence>
+        {(isVideoOff || !stream) && (
           <motion.div
             key="camera-off-avatar"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.15 }}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}
           >
             <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: isHost ? 'var(--primary)' : 'var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.95rem' }}>

@@ -52,7 +52,11 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
       }
     };
 
-    if (Hls.isSupported() && fullManifestUrl.endsWith('.m3u8')) {
+    const isUploadedStream = fullManifestUrl.includes('/api/videos/stream/') || fullManifestUrl.endsWith('source.mp4');
+
+    if (isUploadedStream) {
+      setupNativePlayback();
+    } else if (Hls.isSupported() && fullManifestUrl.endsWith('.m3u8')) {
       const hls = new Hls({
         maxBufferLength: 30,
         maxMaxBufferLength: 60,

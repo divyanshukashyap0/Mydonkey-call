@@ -40,18 +40,20 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
     let isMounted = true;
 
     async function initMedia() {
-      try {
-        const iceRes = await api.getIceServers().catch(() => ({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }));
-        if (iceRes?.iceServers) {
-          iceServersRef.current = iceRes.iceServers;
-        }
+      // Fetch ICE servers in parallel without delaying local camera stream init
+      api.getIceServers()
+        .then((res) => {
+          if (res?.iceServers) iceServersRef.current = res.iceServers;
+        })
+        .catch(() => {});
 
+      try {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error('MediaDevices API is unavailable in this browser context (requires HTTPS or localhost).');
         }
 
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { max: 30 } },
           audio: true,
         });
 
