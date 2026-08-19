@@ -14,20 +14,35 @@ const SEGMENTS_DIR = path.join(STORAGE_DIR, 'segments');
 if (!fs.existsSync(ORIGINAL_DIR)) fs.mkdirSync(ORIGINAL_DIR, { recursive: true });
 if (!fs.existsSync(SEGMENTS_DIR)) fs.mkdirSync(SEGMENTS_DIR, { recursive: true });
 
-async function appendChunkToCombinedFile(uploadId: string, chunkIndex: number, chunkSize: number) {
+async function appendChunkToCombinedFile(uploadId: string, videoId: string, chunkIndex: number, chunkSize: number) {
   try {
     const uploadDir = path.join(ORIGINAL_DIR, uploadId);
-    const combinedPath = path.join(uploadDir, 'combined.mp4');
+    const videoDir = path.join(ORIGINAL_DIR, videoId);
+    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    if (!fs.existsSync(videoDir)) fs.mkdirSync(videoDir, { recursive: true });
+
+    const combinedUploadPath = path.join(uploadDir, 'combined.mp4');
+    const combinedVideoPath = path.join(videoDir, 'combined.mp4');
     const chunkPath = path.join(uploadDir, `chunk_${String(chunkIndex).padStart(4, '0')}.part`);
 
     if (!fs.existsSync(chunkPath)) return;
 
     const chunkBuffer = await fs.promises.readFile(chunkPath);
-    const fileHandle = await fs.promises.open(combinedPath, 'a+');
+
+    // Write chunk at exact byte position to upload.id directory
+    const uploadHandle = await fs.promises.open(combinedUploadPath, 'a+');
     try {
-      await fileHandle.write(chunkBuffer, 0, chunkBuffer.length, chunkIndex * chunkSize);
+      await uploadHandle.write(chunkBuffer, 0, chunkBuffer.length, chunkIndex * chunkSize);
     } finally {
-      await fileHandle.close();
+      await uploadHandle.close();
+    }
+
+    // Write chunk at exact byte position to video.id directory for instant stream lookup
+    const videoHandle = await fs.promises.open(combinedVideoPath, 'a+');
+    try {
+      await videoHandle.write(chunkBuffer, 0, chunkBuffer.length, chunkIndex * chunkSize);
+    } finally {
+      await videoHandle.close();
     }
   } catch (err) {
     console.warn(`Progressive chunk write warning [chunk ${chunkIndex}]:`, err);
@@ -78,7 +93,15 @@ export async function initiateUpload(req: AuthRequest, res: Response) {
     });
 
     const uploadDir = path.join(ORIGINAL_DIR, upload.id);
+    const videoDir = path.join(ORIGINAL_DIR, video.id);
     if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+    if (!fs.existsSync(videoDir)) fs.mkdirSync(videoDir, { recursive: true });
+
+    // Pre-create empty combined.mp4 files so stream API endpoints never return 404
+    const combinedUploadPath = path.join(uploadDir, 'combined.mp4');
+    const combinedVideoPath = path.join(videoDir, 'combined.mp4');
+    if (!fs.existsSync(combinedUploadPath)) fs.writeFileSync(combinedUploadPath, Buffer.alloc(0));
+    if (!fs.existsSync(combinedVideoPath)) fs.writeFileSync(combinedVideoPath, Buffer.alloc(0));
 
     return res.status(201).json({
       uploadId: upload.id,
@@ -154,8 +177,8 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
           data: { completedChunks: completedCount },
         });
 
-        // Progressively append uploaded chunk bytes to combined.mp4 for instant streaming
-        await appendChunkToCombinedFile(upload.id, index, upload.chunkSize);
+        // Progressively write uploaded chunk bytes to combined.mp4 for instant streaming
+        await appendChunkToCombinedFile(upload.id, upload.videoId, index, upload.chunkSize);
 
         // Mark video as READY as soon as 1 chunk is uploaded so playback starts immediately
         if (completedCount >= 1) {
@@ -264,48 +287,58 @@ export async function streamVideoFile(req: Request, res: Response) {
 
     // Fallback: Stream directly from combined.mp4 if HLS segments don't exist yet
     const upload = await prisma.upload.findUnique({ where: { videoId } }).catch(() => null);
-    if (upload) {
-      const combinedPath = path.join(ORIGINAL_DIR, upload.id, 'combined.mp4');
-      if (fs.existsSync(combinedPath)) {
-        if (subPath.endsWith('.m3u8') || subPath === 'index.m3u8') {
-          res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-          const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:3600\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:3600.0,\nsource.mp4\n#EXT-X-ENDLIST\n`;
-          return res.send(m3u8Content);
-        }
+    const possiblePaths = [
+      path.join(ORIGINAL_DIR, videoId, 'combined.mp4'),
+      upload ? path.join(ORIGINAL_DIR, upload.id, 'combined.mp4') : null,
+    ].filter(Boolean) as string[];
 
-        if (subPath === 'source.mp4' || subPath.endsWith('.mp4') || subPath.endsWith('.ts')) {
-          try {
-            const stat = fs.statSync(combinedPath);
-            const fileSize = stat.size;
-            const range = req.headers.range;
+    let combinedPath: string | null = null;
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        combinedPath = p;
+        break;
+      }
+    }
 
-            if (range) {
-              const parts = range.replace(/bytes=/, '').split('-');
-              const start = parseInt(parts[0], 10);
-              const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-              const chunkSize = end - start + 1;
-              const file = fs.createReadStream(combinedPath, { start, end });
+    if (combinedPath) {
+      if (subPath.endsWith('.m3u8') || subPath === 'index.m3u8') {
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:3600\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:3600.0,\nsource.mp4\n#EXT-X-ENDLIST\n`;
+        return res.send(m3u8Content);
+      }
 
-              res.status(206);
-              res.set({
-                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-                'Accept-Ranges': 'bytes',
-                'Content-Length': chunkSize.toString(),
-                'Content-Type': 'video/mp4',
-              });
-              return file.pipe(res);
-            } else {
-              res.status(200);
-              res.set({
-                'Content-Length': fileSize.toString(),
-                'Content-Type': 'video/mp4',
-              });
-              return fs.createReadStream(combinedPath).pipe(res);
-            }
-          } catch (fileErr) {
-            console.error('Combined video stream file access error:', fileErr);
-            return res.status(503).send('Video source temporarily busy. Please retry.');
+      if (subPath === 'source.mp4' || subPath.endsWith('.mp4') || subPath.endsWith('.ts')) {
+        try {
+          const stat = fs.statSync(combinedPath);
+          const fileSize = stat.size;
+          const range = req.headers.range;
+
+          if (range) {
+            const parts = range.replace(/bytes=/, '').split('-');
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : (fileSize > 0 ? fileSize - 1 : 0);
+            const chunkSize = Math.max(0, end - start + 1);
+            const file = fs.createReadStream(combinedPath, { start, end });
+
+            res.status(206);
+            res.set({
+              'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+              'Accept-Ranges': 'bytes',
+              'Content-Length': chunkSize.toString(),
+              'Content-Type': 'video/mp4',
+            });
+            return file.pipe(res);
+          } else {
+            res.status(200);
+            res.set({
+              'Content-Length': fileSize.toString(),
+              'Content-Type': 'video/mp4',
+            });
+            return fs.createReadStream(combinedPath).pipe(res);
           }
+        } catch (fileErr) {
+          console.error('Combined video stream file access error:', fileErr);
+          return res.status(503).send('Video source temporarily busy. Please retry.');
         }
       }
     }
