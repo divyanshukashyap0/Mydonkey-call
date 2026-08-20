@@ -321,11 +321,18 @@ export async function streamVideoFile(req: Request, res: Response) {
     }
 
     // Fallback: Stream directly from combined.mp4 if HLS segments don't exist yet
-    const upload = await prisma.upload.findUnique({ where: { videoId } }).catch(() => null);
+    const upload = await prisma.upload.findFirst({
+      where: { OR: [{ videoId: videoId }, { id: videoId }] },
+    }).catch(() => null);
+
+    const actualVideoId = upload ? upload.videoId : videoId;
+    const actualUploadId = upload ? upload.id : videoId;
+
     const possiblePaths = [
+      path.join(ORIGINAL_DIR, actualVideoId, 'combined.mp4'),
+      path.join(ORIGINAL_DIR, actualUploadId, 'combined.mp4'),
       path.join(ORIGINAL_DIR, videoId, 'combined.mp4'),
-      upload ? path.join(ORIGINAL_DIR, upload.id, 'combined.mp4') : null,
-    ].filter(Boolean) as string[];
+    ];
 
     let combinedPath: string | null = null;
     for (const p of possiblePaths) {
@@ -335,55 +342,62 @@ export async function streamVideoFile(req: Request, res: Response) {
       }
     }
 
-    if (combinedPath) {
-      if (subPath.endsWith('.m3u8') || subPath === 'index.m3u8') {
-        const videoRecord = await prisma.video.findUnique({ where: { id: videoId } }).catch(() => null);
-        const realDuration = (videoRecord && videoRecord.duration && videoRecord.duration > 0) ? Number(videoRecord.duration) : 0;
+    if (!combinedPath) {
+      combinedPath = path.join(ORIGINAL_DIR, actualVideoId, 'combined.mp4');
+      const dir = path.dirname(combinedPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(combinedPath, Buffer.alloc(0));
+    }
 
-        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-        if (realDuration > 0) {
-          const targetDur = Math.ceil(realDuration);
-          const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:${targetDur}\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:${realDuration.toFixed(1)},\nsource.mp4\n#EXT-X-ENDLIST\n`;
-          return res.send(m3u8Content);
-        }
+    if (subPath.endsWith('.m3u8') || subPath === 'index.m3u8') {
+      const videoRecord = await prisma.video.findFirst({
+        where: { OR: [{ id: actualVideoId }, { id: videoId }] },
+      }).catch(() => null);
+      const realDuration = (videoRecord && videoRecord.duration && videoRecord.duration > 0) ? Number(videoRecord.duration) : 0;
 
-        const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:86400\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:86400.0,\nsource.mp4\n#EXT-X-ENDLIST\n`;
+      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      if (realDuration > 0) {
+        const targetDur = Math.ceil(realDuration);
+        const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:${targetDur}\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:${realDuration.toFixed(1)},\nsource.mp4\n#EXT-X-ENDLIST\n`;
         return res.send(m3u8Content);
       }
 
-      if (subPath === 'source.mp4' || subPath.endsWith('.mp4') || subPath.endsWith('.ts')) {
-        try {
-          const stat = fs.statSync(combinedPath);
-          const fileSize = stat.size;
-          const range = req.headers.range;
+      const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:86400\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:86400.0,\nsource.mp4\n#EXT-X-ENDLIST\n`;
+      return res.send(m3u8Content);
+    }
 
-          if (range) {
-            const parts = range.replace(/bytes=/, '').split('-');
-            const start = parseInt(parts[0], 10);
-            const end = parts[1] ? parseInt(parts[1], 10) : (fileSize > 0 ? fileSize - 1 : 0);
-            const chunkSize = Math.max(0, end - start + 1);
-            const file = fs.createReadStream(combinedPath, { start, end });
+    if (subPath === 'source.mp4' || subPath.endsWith('.mp4') || subPath.endsWith('.ts')) {
+      try {
+        const stat = fs.statSync(combinedPath);
+        const fileSize = stat.size;
+        const range = req.headers.range;
 
-            res.status(206);
-            res.set({
-              'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-              'Accept-Ranges': 'bytes',
-              'Content-Length': chunkSize.toString(),
-              'Content-Type': 'video/mp4',
-            });
-            return file.pipe(res);
-          } else {
-            res.status(200);
-            res.set({
-              'Content-Length': fileSize.toString(),
-              'Content-Type': 'video/mp4',
-            });
-            return fs.createReadStream(combinedPath).pipe(res);
-          }
-        } catch (fileErr) {
-          console.error('Combined video stream file access error:', fileErr);
-          return res.status(503).send('Video source temporarily busy. Please retry.');
+        if (range) {
+          const parts = range.replace(/bytes=/, '').split('-');
+          const start = parseInt(parts[0], 10);
+          const end = parts[1] ? parseInt(parts[1], 10) : (fileSize > 0 ? fileSize - 1 : 0);
+          const chunkSize = Math.max(0, end - start + 1);
+          const file = fs.createReadStream(combinedPath, { start, end });
+
+          res.status(206);
+          res.set({
+            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunkSize.toString(),
+            'Content-Type': 'video/mp4',
+          });
+          return file.pipe(res);
+        } else {
+          res.status(200);
+          res.set({
+            'Content-Length': fileSize.toString(),
+            'Content-Type': 'video/mp4',
+          });
+          return fs.createReadStream(combinedPath).pipe(res);
         }
+      } catch (fileErr) {
+        console.error('Combined video stream file access error:', fileErr);
+        return res.status(503).send('Video source temporarily busy. Please retry.');
       }
     }
 
