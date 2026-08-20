@@ -16,8 +16,10 @@ const io = new SocketIOServer(server, {
 
 setupSocketIO(io);
 
-// Start Background Segment Cleanup Worker
-cleanupWorker.start();
+// Start Background Segment Cleanup Worker (only in non-serverless environment)
+if (!process.env.VERCEL) {
+  cleanupWorker.start();
+}
 
 const PORT = parseInt(env.PORT, 10) || 5000;
 

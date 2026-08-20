@@ -4,7 +4,8 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "prisma generate && tsc",
+    "vercel-build": "prisma generate && tsc",
     "start": "npx prisma db push --skip-generate || true && node dist/server.js",
     "test": "tsx src/tests/syncMath.test.ts && tsx src/tests/segmentCleanup.test.ts",
     "db:push": "prisma db push",
