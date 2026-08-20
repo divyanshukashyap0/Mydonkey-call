@@ -98,6 +98,9 @@ export class ResumableUploader {
     const end = Math.min(this.file.size, start + this.chunkSize);
     const chunkBlob = this.file.slice(start, end);
 
+    const formData = new FormData();
+    formData.append('chunk', chunkBlob, `chunk_${index}.part`);
+
     let attempts = 0;
     const maxAttempts = 6;
     while (attempts < maxAttempts && !this.isPaused) {
@@ -105,10 +108,9 @@ export class ResumableUploader {
         const res = await fetch(`${API_BASE}/uploads/${this.uploadId}/chunks/${index}`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/octet-stream',
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: chunkBlob,
+          body: formData,
         });
 
         if (res.ok) {

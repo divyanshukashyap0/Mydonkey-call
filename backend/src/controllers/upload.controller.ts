@@ -207,6 +207,11 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
       return res.json({ success: true, chunkIndex: index, completedChunks: completedCount });
     };
 
+    if (req.file && req.file.buffer && req.file.buffer.length > 0) {
+      await fs.promises.writeFile(chunkPath, req.file.buffer);
+      return await finalizeChunk();
+    }
+
     if (Buffer.isBuffer(req.body) && req.body.length > 0) {
       await fs.promises.writeFile(chunkPath, req.body);
       return await finalizeChunk();
