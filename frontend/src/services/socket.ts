@@ -9,9 +9,19 @@ let socketInstance: TypedSocket | null = null;
 export function getSocket(): TypedSocket {
   if (!socketInstance) {
     const token = localStorage.getItem('mydonkey_token') || '';
+    const socketOptions = {
+      autoConnect: false,
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 15,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
+      timeout: 30000,
+    };
     socketInstance = BACKEND_URL
-      ? io(BACKEND_URL, { autoConnect: false, auth: { token } })
-      : io({ autoConnect: false, auth: { token } });
+      ? io(BACKEND_URL, socketOptions)
+      : io(socketOptions);
   }
   return socketInstance;
 }

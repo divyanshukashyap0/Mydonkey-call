@@ -60,6 +60,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/uploads', express.raw({ type: 'application/octet-stream', limit: '50mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/rooms', roomRoutes);
 app.use('/api/webrtc', webrtcRoutes);

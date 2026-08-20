@@ -324,8 +324,17 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
         await pc.setLocalDescription(offer);
         getSocket().emit('webrtc:offer', { targetUserId, sdp: offer });
       }
-    } catch (err) {
-      console.error(`Error initiating peer connection to ${targetUserId}:`, err);
+    } catch (err: any) {
+      if (err.name === 'InvalidAccessError' || err.name === 'InvalidStateError') {
+        console.warn(`Handled WebRTC SDP offer renegotiation for ${targetUserId}, resetting connection:`, err.message || err);
+        const oldPc = pcsRef.current.get(targetUserId);
+        if (oldPc) {
+          oldPc.close();
+          pcsRef.current.delete(targetUserId);
+        }
+      } else {
+        console.error(`Error initiating peer connection to ${targetUserId}:`, err);
+      }
     } finally {
       isMakingOfferRef.current.set(targetUserId, false);
     }

@@ -37,32 +37,48 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   error: null,
 
   initAuth: () => {
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (result?.user) {
-          const idToken = await result.user.getIdToken();
-          localStorage.setItem('mydonkey_token', idToken);
+    // 500ms safety timer guaranteeing instant website render
+    const safetyTimer = setTimeout(() => {
+      if (get().isLoading) {
+        set({ isLoading: false });
+      }
+    }, 500);
 
-          const appUser: User = {
-            id: result.user.uid,
-            displayName: result.user.displayName || 'Google User',
-            email: result.user.email || null,
-            avatarUrl: result.user.photoURL || null,
-            isGuest: false,
-          };
+    try {
+      getRedirectResult(auth)
+        .then(async (result) => {
+          if (result?.user) {
+            const idToken = await result.user.getIdToken();
+            localStorage.setItem('mydonkey_token', idToken);
 
-          await api.syncFirebaseUser(appUser).catch(() => {});
-          syncUserClient(appUser).catch(() => {});
+            const appUser: User = {
+              id: result.user.uid,
+              displayName: result.user.displayName || 'Google User',
+              email: result.user.email || null,
+              avatarUrl: result.user.photoURL || null,
+              isGuest: false,
+            };
 
-          set({ user: appUser, token: idToken, isLoading: false, error: null });
-          connectSocket(idToken);
-        }
-      })
-      .catch((err) => {
-        console.warn('Firebase redirect auth result handling error:', err);
-      });
+            await api.syncFirebaseUser(appUser).catch(() => {});
+            syncUserClient(appUser).catch(() => {});
+
+            clearTimeout(safetyTimer);
+            set({ user: appUser, token: idToken, isLoading: false, error: null });
+            connectSocket(idToken);
+          }
+        })
+        .catch((err) => {
+          if (err?.message?.includes('closing') || err?.message?.includes('hidden') || err?.toString?.().includes('closing')) {
+            return;
+          }
+          console.warn('Firebase redirect auth result notice:', err);
+        });
+    } catch {
+      // Ignore synchronous init errors
+    }
 
     onAuthStateChanged(auth, async (firebaseUser) => {
+      clearTimeout(safetyTimer);
       if (firebaseUser) {
         try {
           const idToken = await firebaseUser.getIdToken();

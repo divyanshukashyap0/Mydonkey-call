@@ -99,7 +99,8 @@ export class ResumableUploader {
     const chunkBlob = this.file.slice(start, end);
 
     let attempts = 0;
-    while (attempts < 3 && !this.isPaused) {
+    const maxAttempts = 6;
+    while (attempts < maxAttempts && !this.isPaused) {
       try {
         const res = await fetch(`${API_BASE}/uploads/${this.uploadId}/chunks/${index}`, {
           method: 'POST',
@@ -123,11 +124,13 @@ export class ResumableUploader {
           return true;
         } else {
           attempts++;
-          await new Promise((r) => setTimeout(r, 500));
+          const delay = Math.min(1000 * Math.pow(1.5, attempts), 5000);
+          await new Promise((r) => setTimeout(r, delay));
         }
       } catch (err) {
         attempts++;
-        await new Promise((r) => setTimeout(r, 500));
+        const delay = Math.min(1000 * Math.pow(1.5, attempts), 5000);
+        await new Promise((r) => setTimeout(r, delay));
       }
     }
     return false;
@@ -135,7 +138,7 @@ export class ResumableUploader {
 
   private async uploadLoop() {
     const token = localStorage.getItem('mydonkey_token');
-    const CONCURRENCY = 3; // 3 Parallel chunk upload streams
+    const CONCURRENCY = 2; // 2 Parallel chunk upload streams to prevent HTTP/2 stream multiplexing collisions
 
     const pendingIndexes = Array.from({ length: this.totalChunks }, (_, i) => i).filter(
       (idx) => !this.completedChunks.has(idx)

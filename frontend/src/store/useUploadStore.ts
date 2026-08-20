@@ -23,21 +23,25 @@ interface UploadStoreState {
 
 function probeVideoDuration(file: File): Promise<number | null> {
   return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), 200);
     try {
       const video = document.createElement('video');
       video.preload = 'metadata';
       const url = URL.createObjectURL(file);
       video.src = url;
       video.onloadedmetadata = () => {
+        clearTimeout(timer);
         URL.revokeObjectURL(url);
         const d = video.duration;
         resolve(d && isFinite(d) && d > 0 ? d : null);
       };
       video.onerror = () => {
+        clearTimeout(timer);
         URL.revokeObjectURL(url);
         resolve(null);
       };
     } catch {
+      clearTimeout(timer);
       resolve(null);
     }
   });
@@ -57,7 +61,11 @@ export const useUploadStore = create<UploadStoreState>((set, get) => ({
 
     try {
       const socket = getSocket();
-      const clientDuration = await probeVideoDuration(file);
+      // Fast non-blocking duration probe with 200ms cap so upload starts instantly
+      const clientDuration = await Promise.race([
+        probeVideoDuration(file),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 200)),
+      ]);
 
       const uploaderInstance = new ResumableUploader(
         file,
