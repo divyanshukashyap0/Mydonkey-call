@@ -32,6 +32,11 @@ export class ResumableUploader {
     this.duration = duration || null;
     this.onProgress = onProgress;
     this.onEarlyReady = onEarlyReady;
+    this.totalChunks = Math.ceil(this.file.size / this.chunkSize);
+  }
+
+  public setDuration(duration: number) {
+    this.duration = duration;
   }
 
   public async start(): Promise<{ videoId: string }> {
@@ -170,7 +175,7 @@ export class ResumableUploader {
     }
   }
 
-  private emitProgress(status: 'UPLOADING' | 'PAUSED' | 'COMPLETED' | 'FAILED', error?: string) {
+  public emitProgress(status: 'UPLOADING' | 'PAUSED' | 'COMPLETED' | 'FAILED', error?: string) {
     const uploadedBytes = Math.min(this.file.size, this.completedChunks.size * this.chunkSize);
     const percentage = Math.min(100, Math.round((uploadedBytes / this.file.size) * 100));
 

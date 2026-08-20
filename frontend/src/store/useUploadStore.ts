@@ -57,15 +57,10 @@ export const useUploadStore = create<UploadStoreState>((set, get) => ({
 
   startUpload: async (file: File) => {
     if (get().isInitializing) return;
-    set({ isInitializing: true, error: null, activeFile: file, progress: null });
+    set({ isInitializing: true, error: null, activeFile: file });
 
     try {
       const socket = getSocket();
-      // Fast non-blocking duration probe with 200ms cap so upload starts instantly
-      const clientDuration = await Promise.race([
-        probeVideoDuration(file),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 200)),
-      ]);
 
       const uploaderInstance = new ResumableUploader(
         file,
@@ -78,18 +73,22 @@ export const useUploadStore = create<UploadStoreState>((set, get) => ({
         },
         (earlyVideoId) => {
           socket.emit('video:change', { videoId: earlyVideoId });
-        },
-        clientDuration
+        }
       );
 
-      set({ uploader: uploaderInstance });
+      // Instantly set uploader & emit initial progress state in 0ms
+      set({ uploader: uploaderInstance, isInitializing: false });
+      uploaderInstance.emitProgress('UPLOADING');
+
+      // Probe duration in background without blocking upload execution
+      probeVideoDuration(file).then((dur) => {
+        if (dur) uploaderInstance.setDuration(dur);
+      }).catch(() => {});
 
       const { videoId } = await uploaderInstance.start();
       socket.emit('video:change', { videoId });
     } catch (err: any) {
-      set({ error: err.message || 'Upload failed', progress: null, uploader: null });
-    } finally {
-      set({ isInitializing: false });
+      set({ error: err.message || 'Upload failed', progress: null, uploader: null, isInitializing: false });
     }
   },
 
