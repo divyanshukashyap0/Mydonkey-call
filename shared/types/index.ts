@@ -96,6 +96,7 @@ export interface ServerToClientEvents {
   'webrtc:answer': (data: { fromUserId: string; sdp: any }) => void;
   'webrtc:ice': (data: { fromUserId: string; candidate: any }) => void;
   'participant:state-changed': (data: { userId: string; isMuted: boolean; isVideoOff: boolean }) => void;
+  'host:force-mute': () => void;
   'error:message': (data: { message: string }) => void;
 }
 
@@ -110,4 +111,6 @@ export interface ClientToServerEvents {
   'webrtc:answer': (data: { targetUserId: string; sdp: any }) => void;
   'webrtc:ice': (data: { targetUserId: string; candidate: any }) => void;
   'participant:toggle-media': (data: { isMuted?: boolean; isVideoOff?: boolean }) => void;
+  'host:mute-participant': (data: { targetUserId: string; isMuted?: boolean }) => void;
+  'host:mute-all': () => void;
 }

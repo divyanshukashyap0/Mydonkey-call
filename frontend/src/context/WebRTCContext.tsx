@@ -8,6 +8,10 @@ export interface WebRTCContextType {
   isMuted: boolean;
   isVideoOff: boolean;
   mediaError: string | null;
+  participantVolumes: Record<string, number>;
+  setParticipantVolume: (userId: string, volume: number) => void;
+  hostMuteParticipant: (targetUserId: string, isMuted?: boolean) => void;
+  hostMuteAll: () => void;
   connectToPeer: (targetUserId: string) => Promise<void>;
   restartIce: (targetUserId: string) => Promise<void>;
   toggleMic: () => void;
@@ -22,9 +26,10 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
 }) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true); // Default muted for everyone
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [participantVolumes, setParticipantVolumes] = useState<Record<string, number>>({});
 
   const pcsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
@@ -35,7 +40,7 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
   const localStreamRef = useRef<MediaStream | null>(null);
   localStreamRef.current = localStream;
 
-  // Initialize camera and microphone
+  // Initialize camera and microphone (Mic muted by default)
   useEffect(() => {
     let isMounted = true;
 
@@ -57,9 +62,17 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
           audio: true,
         });
 
+        // Mute mic by default on initial capture
+        const audioTrack = stream.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = false;
+        }
+
         if (isMounted) {
           setLocalStream(stream);
+          setIsMuted(true);
           setMediaError(null);
+          getSocket().emit('participant:toggle-media', { isMuted: true });
         }
       } catch (err: any) {
         console.error('⚠️ Camera/Microphone access error:', err.message || err);
@@ -288,16 +301,29 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
       });
     };
 
+    const handleForceMute = () => {
+      if (localStreamRef.current) {
+        const audioTrack = localStreamRef.current.getAudioTracks()[0];
+        if (audioTrack) {
+          audioTrack.enabled = false;
+        }
+      }
+      setIsMuted(true);
+      getSocket().emit('participant:toggle-media', { isMuted: true });
+    };
+
     socket.on('webrtc:offer', handleOffer);
     socket.on('webrtc:answer', handleAnswer);
     socket.on('webrtc:ice', handleIce);
     socket.on('room:user-left', handleUserLeft);
+    socket.on('host:force-mute', handleForceMute);
 
     return () => {
       socket.off('webrtc:offer', handleOffer);
       socket.off('webrtc:answer', handleAnswer);
       socket.off('webrtc:ice', handleIce);
       socket.off('room:user-left', handleUserLeft);
+      socket.off('host:force-mute', handleForceMute);
     };
   }, [currentUserId]);
 
@@ -352,6 +378,19 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
     }
   };
 
+  const setParticipantVolume = (userId: string, volume: number) => {
+    const clamped = Math.max(0, Math.min(100, volume));
+    setParticipantVolumes((prev) => ({ ...prev, [userId]: clamped }));
+  };
+
+  const hostMuteParticipant = (targetUserId: string, targetMuted?: boolean) => {
+    getSocket().emit('host:mute-participant', { targetUserId, isMuted: targetMuted });
+  };
+
+  const hostMuteAll = () => {
+    getSocket().emit('host:mute-all');
+  };
+
   const toggleMic = () => {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0];
@@ -384,6 +423,10 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
         isMuted,
         isVideoOff,
         mediaError,
+        participantVolumes,
+        setParticipantVolume,
+        hostMuteParticipant,
+        hostMuteAll,
         connectToPeer,
         restartIce,
         toggleMic,

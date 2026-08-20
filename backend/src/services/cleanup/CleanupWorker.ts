@@ -41,10 +41,35 @@ export class CleanupWorker {
     this.isRunning = true;
 
     try {
+      await this.cleanupExpiredRooms();
       await this.cleanupExpiredUploadedVideos();
       await this.cleanupRedisSegments();
     } finally {
       this.isRunning = false;
+    }
+  }
+
+  /**
+   * Automatically deletes rooms whose 60-minute inactivity window has expired.
+   */
+  public async cleanupExpiredRooms(): Promise<void> {
+    try {
+      const now = new Date();
+      const expiredRooms = await prisma.room.findMany({
+        where: { expiresAt: { lt: now } },
+        select: { id: true, roomCode: true },
+      });
+
+      if (expiredRooms.length === 0) return;
+
+      for (const room of expiredRooms) {
+        console.log(`⏰ Room [${room.roomCode}] expired after 60 minutes of inactivity. Purging...`);
+        await prisma.room.delete({
+          where: { id: room.id },
+        }).catch((err) => console.warn(`DB room delete warning for ${room.roomCode}:`, err));
+      }
+    } catch (err: any) {
+      console.error('Error during expired rooms cleanup cycle:', err.message);
     }
   }
 

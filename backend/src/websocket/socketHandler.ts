@@ -11,6 +11,7 @@ import {
   syncVideoMetadataToFirestore,
   syncChatMessageToFirestore,
 } from '../services/firestoreSync';
+import { touchRoomActivity } from '../utils/roomActivity';
 
 interface AuthenticatedSocket extends Socket {
   user?: {
@@ -152,6 +153,13 @@ export function setupSocketIO(io: SocketIOServer) {
           return;
         }
 
+        if (new Date() > room.expiresAt) {
+          socket.emit('error:message', { message: 'This room has expired after 60 minutes of inactivity.' });
+          return;
+        }
+
+        touchRoomActivity(room.id).catch(() => {});
+
         if (room.isLocked && room.hostId !== socket.user.id) {
           socket.emit('error:message', { message: 'Room is locked by host' });
           return;
@@ -175,6 +183,7 @@ export function setupSocketIO(io: SocketIOServer) {
                 roomId: room.id,
                 userId: socket.user.id,
                 role: room.hostId === socket.user.id ? 'HOST' : 'PARTICIPANT',
+                isMuted: true,
                 isOnline: true,
               },
               include: { user: { select: { id: true, displayName: true, avatarUrl: true, isGuest: true } } },
@@ -194,7 +203,7 @@ export function setupSocketIO(io: SocketIOServer) {
             userId: socket.user.id,
             role: room.hostId === socket.user.id ? 'HOST' : 'PARTICIPANT',
             joinedAt: new Date(),
-            isMuted: false,
+            isMuted: true,
             isVideoOff: false,
             isOnline: true,
             user: {
@@ -397,6 +406,7 @@ export function setupSocketIO(io: SocketIOServer) {
 
         io.to(`room:${roomCode}`).emit('chat:receive', chatMessagePayload);
         syncChatMessageToFirestore(roomCode, chatMessagePayload).catch(() => {});
+        touchRoomActivity(room.id).catch(() => {});
 
       } catch (err: any) {
         console.error('Chat Send error:', err);
@@ -411,6 +421,8 @@ export function setupSocketIO(io: SocketIOServer) {
 
         const room = await prisma.room.findUnique({ where: { roomCode } });
         if (!room) return;
+
+        touchRoomActivity(room.id).catch(() => {});
 
         if (room.controlMode === 'HOST_ONLY' && room.hostId !== socket.user.id) {
           socket.emit('error:message', { message: 'Only the room host can control playback.' });
@@ -814,6 +826,78 @@ export function setupSocketIO(io: SocketIOServer) {
         });
       } catch (err) {
         console.error('Participant media toggle error:', err);
+      }
+    });
+
+    // Host Remote Mute Controls
+    socket.on('host:mute-participant', async ({ targetUserId, isMuted }) => {
+      try {
+        if (!socket.user || !socket.currentRoomCode) return;
+        const room = await prisma.room.findUnique({ where: { roomCode: socket.currentRoomCode } });
+        if (!room) return;
+
+        const requester = await prisma.roomParticipant.findFirst({
+          where: { roomId: room.id, userId: socket.user.id, isOnline: true },
+        });
+
+        const isHostOrCoHost = room.hostId === socket.user.id || requester?.role === 'HOST' || requester?.role === 'CO_HOST';
+        if (!isHostOrCoHost) {
+          socket.emit('error:message', { message: 'Only host or co-host can control participant microphones.' });
+          return;
+        }
+
+        const nextMuted = isMuted !== undefined ? isMuted : true;
+
+        await prisma.roomParticipant.updateMany({
+          where: { roomId: room.id, userId: targetUserId },
+          data: { isMuted: nextMuted },
+        });
+
+        io.to(`room:${socket.currentRoomCode}`).emit('participant:state-changed', {
+          userId: targetUserId,
+          isMuted: nextMuted,
+        });
+
+        if (nextMuted) {
+          io.to(`user:${targetUserId}`).emit('host:force-mute');
+        }
+      } catch (err) {
+        console.error('Host mute participant error:', err);
+      }
+    });
+
+    socket.on('host:mute-all', async () => {
+      try {
+        if (!socket.user || !socket.currentRoomCode) return;
+        const room = await prisma.room.findUnique({ where: { roomCode: socket.currentRoomCode } });
+        if (!room) return;
+
+        const isHostOrCoHost = room.hostId === socket.user.id;
+        if (!isHostOrCoHost) {
+          socket.emit('error:message', { message: 'Only the room host can mute all participants.' });
+          return;
+        }
+
+        await prisma.roomParticipant.updateMany({
+          where: { roomId: room.id, userId: { not: socket.user.id } },
+          data: { isMuted: true },
+        });
+
+        const participants = await prisma.roomParticipant.findMany({
+          where: { roomId: room.id, isOnline: true },
+        });
+
+        participants.forEach((p) => {
+          if (p.userId !== socket.user?.id) {
+            io.to(`room:${socket.currentRoomCode}`).emit('participant:state-changed', {
+              userId: p.userId,
+              isMuted: true,
+            });
+            io.to(`user:${p.userId}`).emit('host:force-mute');
+          }
+        });
+      } catch (err) {
+        console.error('Host mute all error:', err);
       }
     });
 

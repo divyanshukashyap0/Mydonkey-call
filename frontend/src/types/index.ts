@@ -133,6 +133,7 @@ export interface ServerToClientEvents {
   'playback:state-sync': (data: { authoritativeState: AuthoritativePlaybackState; currentVideo: Video | null }) => void;
   'sync:pong': (data: { clientTime: number; serverTime: number }) => void;
   'upload:progress': (data: { progress: any; fileName: string; uploaderName: string }) => void;
+  'host:force-mute': () => void;
   'error:message': (data: { message: string }) => void;
 }
 
@@ -160,6 +161,8 @@ export interface ClientToServerEvents {
   'webrtc:ice': (data: { targetUserId: string; candidate: any }) => void;
   'webrtc:reconnect-request': (data: { targetUserId: string }) => void;
   'participant:toggle-media': (data: { isMuted?: boolean; isVideoOff?: boolean }) => void;
+  'host:mute-participant': (data: { targetUserId: string; isMuted?: boolean }) => void;
+  'host:mute-all': () => void;
   'upload:progress': (data: { progress: any; fileName: string }) => void;
   'sync:ping': (data: { clientTime: number }) => void;
 }

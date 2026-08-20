@@ -19,6 +19,7 @@ export const VideoGrid: React.FC = () => {
     remoteStreams,
     isMuted,
     isVideoOff,
+    participantVolumes,
     connectToPeer,
     toggleMic,
     toggleCamera,
@@ -59,6 +60,7 @@ export const VideoGrid: React.FC = () => {
                 isHost={isHost}
                 isMuted={p.isMuted}
                 isVideoOff={p.isVideoOff}
+                volume={participantVolumes[p.userId]}
                 onMaximize={() => setMaximizedUser({
                   id: p.userId,
                   stream: remoteStream,

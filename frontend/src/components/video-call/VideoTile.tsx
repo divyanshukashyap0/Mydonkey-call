@@ -10,6 +10,7 @@ interface VideoTileProps {
   isCoHost?: boolean;
   isMuted?: boolean;
   isVideoOff?: boolean;
+  volume?: number;
   onMaximize?: () => void;
   isMaximized?: boolean;
 }
@@ -22,6 +23,7 @@ export const VideoTile: React.FC<VideoTileProps> = ({
   isCoHost = false,
   isMuted = false,
   isVideoOff = false,
+  volume = 100,
   onMaximize,
   isMaximized = false,
 }) => {
@@ -104,9 +106,14 @@ export const VideoTile: React.FC<VideoTileProps> = ({
       <video
         ref={(node) => {
           (videoRef as any).current = node;
-          if (node && stream && node.srcObject !== stream) {
-            node.srcObject = stream;
-            node.play().catch(() => {});
+          if (node) {
+            if (stream && node.srcObject !== stream) {
+              node.srcObject = stream;
+              node.play().catch(() => {});
+            }
+            if (!isLocal) {
+              node.volume = Math.max(0, Math.min(1, volume / 100));
+            }
           }
         }}
         autoPlay

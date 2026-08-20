@@ -4,6 +4,7 @@ import { generateRoomCode } from '../utils/roomCode';
 import { AuthRequest } from '../middleware/auth';
 import { serializeVideo } from '../websocket/socketHandler';
 import { syncRoomToFirestore, syncParticipantToFirestore } from '../services/firestoreSync';
+import { touchRoomActivity, INACTIVITY_TIMEOUT_MS } from '../utils/roomActivity';
 
 export async function createRoom(req: AuthRequest, res: Response) {
   try {
@@ -33,7 +34,7 @@ export async function createRoom(req: AuthRequest, res: Response) {
       return res.status(500).json({ error: 'Failed to generate unique room code' });
     }
 
-    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 Hours
+    const expiresAt = new Date(Date.now() + INACTIVITY_TIMEOUT_MS); // 60 Minutes Inactivity Expiration Window
 
     const room = await prisma.room.create({
       data: {
@@ -100,8 +101,11 @@ export async function getRoomByCode(req: AuthRequest, res: Response) {
     }
 
     if (new Date() > room.expiresAt) {
-      return res.status(410).json({ error: 'Room has expired' });
+      return res.status(410).json({ error: 'This room has expired after 60 minutes of inactivity.' });
     }
+
+    // Refresh 60-minute inactivity timer on room fetch
+    touchRoomActivity(room.id).catch(() => {});
 
     const formattedRoom = {
       ...room,
@@ -133,6 +137,10 @@ export async function joinRoom(req: AuthRequest, res: Response) {
 
     if (!room) {
       return res.status(404).json({ error: 'Room not found' });
+    }
+
+    if (new Date() > room.expiresAt) {
+      return res.status(410).json({ error: 'This room has expired after 60 minutes of inactivity.' });
     }
 
     if (room.isLocked && room.hostId !== req.user.id) {
@@ -185,6 +193,7 @@ export async function joinRoom(req: AuthRequest, res: Response) {
 
     syncRoomToFirestore(room).catch(() => {});
     syncParticipantToFirestore(normalizedCode, participant).catch(() => {});
+    touchRoomActivity(room.id).catch(() => {});
 
     return res.json({ room, participant });
   } catch (error: any) {
