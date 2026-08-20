@@ -96,30 +96,40 @@ export class ResumableUploader {
     await this.uploadLoop();
   }
 
-  private async uploadSingleChunk(index: number, token: string | null): Promise<boolean> {
-    if (this.isPaused || this.completedChunks.has(index)) return true;
+  private chunkProgressMap: Map<number, number> = new Map();
 
-    const start = index * this.chunkSize;
-    const end = Math.min(this.file.size, start + this.chunkSize);
-    const chunkBlob = this.file.slice(start, end);
+  private uploadSingleChunkWithXHR(index: number, token: string | null): Promise<boolean> {
+    return new Promise((resolve) => {
+      if (this.isPaused || this.completedChunks.has(index)) {
+        return resolve(true);
+      }
 
-    const formData = new FormData();
-    formData.append('chunk', chunkBlob, `chunk_${index}.part`);
+      const start = index * this.chunkSize;
+      const end = Math.min(this.file.size, start + this.chunkSize);
+      const chunkBlob = this.file.slice(start, end);
 
-    let attempts = 0;
-    const maxAttempts = 6;
-    while (attempts < maxAttempts && !this.isPaused) {
-      try {
-        const res = await fetch(`${API_BASE}/uploads/${this.uploadId}/chunks/${index}`, {
-          method: 'POST',
-          headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: formData,
-        });
+      const formData = new FormData();
+      formData.append('chunk', chunkBlob, `chunk_${index}.part`);
 
-        if (res.ok) {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', `${API_BASE}/uploads/${this.uploadId}/chunks/${index}`);
+
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+
+      // Real-time byte progress streaming for instant progress bar updates
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && !this.isPaused) {
+          this.chunkProgressMap.set(index, event.loaded);
+          this.emitProgress('UPLOADING');
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
           this.completedChunks.add(index);
+          this.chunkProgressMap.set(index, chunkBlob.size);
           this.emitProgress('UPLOADING');
 
           if (this.completedChunks.size >= 1 && !this.hasTriggeredEarlyReady && this.videoId) {
@@ -128,17 +138,42 @@ export class ResumableUploader {
               this.onEarlyReady(this.videoId);
             }
           }
-          return true;
+          resolve(true);
         } else {
-          attempts++;
-          const delay = Math.min(1000 * Math.pow(1.5, attempts), 5000);
-          await new Promise((r) => setTimeout(r, delay));
+          this.chunkProgressMap.set(index, 0);
+          resolve(false);
         }
-      } catch (err) {
-        attempts++;
-        const delay = Math.min(1000 * Math.pow(1.5, attempts), 5000);
-        await new Promise((r) => setTimeout(r, delay));
-      }
+      };
+
+      xhr.onerror = () => {
+        this.chunkProgressMap.set(index, 0);
+        resolve(false);
+      };
+      xhr.ontimeout = () => {
+        this.chunkProgressMap.set(index, 0);
+        resolve(false);
+      };
+      xhr.onabort = () => {
+        this.chunkProgressMap.set(index, 0);
+        resolve(false);
+      };
+
+      xhr.send(formData);
+    });
+  }
+
+  private async uploadSingleChunk(index: number, token: string | null): Promise<boolean> {
+    if (this.isPaused || this.completedChunks.has(index)) return true;
+
+    let attempts = 0;
+    const maxAttempts = 6;
+    while (attempts < maxAttempts && !this.isPaused) {
+      const success = await this.uploadSingleChunkWithXHR(index, token);
+      if (success) return true;
+
+      attempts++;
+      const delay = Math.min(1000 * Math.pow(1.5, attempts), 5000);
+      await new Promise((r) => setTimeout(r, delay));
     }
     return false;
   }
@@ -176,20 +211,29 @@ export class ResumableUploader {
   }
 
   public emitProgress(status: 'UPLOADING' | 'PAUSED' | 'COMPLETED' | 'FAILED', error?: string) {
-    const uploadedBytes = Math.min(this.file.size, this.completedChunks.size * this.chunkSize);
-    const percentage = Math.min(100, Math.round((uploadedBytes / this.file.size) * 100));
+    let inFlightBytes = 0;
+    this.chunkProgressMap.forEach((bytes) => {
+      inFlightBytes += bytes;
+    });
 
-    const elapsedSec = (Date.now() - this.startTime) / 1000;
-    const bytesSinceStart = Math.max(0, uploadedBytes - this.uploadedBytesSnapshot);
-    const speedBytesPerSec = elapsedSec > 0 ? bytesSinceStart / elapsedSec : 0;
+    const completedBytes = Array.from(this.completedChunks).reduce(
+      (acc, idx) => acc + Math.min(this.chunkSize, this.file.size - idx * this.chunkSize),
+      0
+    );
+
+    const totalUploadedBytes = Math.min(this.file.size, Math.max(completedBytes, inFlightBytes));
+    const percentage = Math.min(100, Math.round((totalUploadedBytes / this.file.size) * 100));
+
+    const elapsedSec = Math.max(0.1, (Date.now() - this.startTime) / 1000);
+    const speedBytesPerSec = totalUploadedBytes / elapsedSec;
     const speedMBs = parseFloat((speedBytesPerSec / (1024 * 1024)).toFixed(2));
 
-    const remainingBytes = this.file.size - uploadedBytes;
+    const remainingBytes = Math.max(0, this.file.size - totalUploadedBytes);
     const etaSeconds = speedBytesPerSec > 0 ? Math.round(remainingBytes / speedBytesPerSec) : 0;
 
     this.onProgress({
       percentage,
-      uploadedBytes,
+      uploadedBytes: totalUploadedBytes,
       totalBytes: this.file.size,
       speedMBs,
       etaSeconds,
