@@ -39,8 +39,13 @@ function formatDuration(seconds?: number | null): string {
 import { motion } from 'framer-motion';
 import { pageEntrance } from '../animations';
 
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '../components/common/ToastNotification';
+
 export const AdminPage: React.FC = () => {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const { showToast } = useToast();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [rooms, setRooms] = useState<AdminRoom[]>([]);
@@ -50,6 +55,7 @@ export const AdminPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [redirectCountdown, setRedirectCountdown] = useState(3);
 
   const loadData = async () => {
     setLoading(true);
@@ -79,11 +85,25 @@ export const AdminPage: React.FC = () => {
   useEffect(() => {
     if (user?.role === 'admin') {
       loadData();
-    } else {
+    } else if (user && user.role !== 'admin') {
       setLoading(false);
       setErrorMsg('Admin role required');
+      showToast('⚠️ Access Denied: You do not have permission to access the Admin Dashboard. Redirecting to Home...', 'error');
+
+      const timer = setInterval(() => {
+        setRedirectCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            navigate('/');
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
     }
-  }, [user?.role]);
+  }, [user?.role, navigate]);
 
   const handleUpdateRole = async (targetUserId: string, newRole: 'admin' | 'user') => {
     try {
@@ -125,27 +145,31 @@ export const AdminPage: React.FC = () => {
       v.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Role Gate: Non-Admin Access Screen
+  // Role Gate: Non-Admin Access Screen with Warning & Redirect Banner
   if (user && user.role !== 'admin' && errorMsg) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-dark)' }}>
         <Navbar />
         <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
-          <div className="glass-panel" style={{ maxWidth: '480px', width: '100%', padding: '36px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-              <ShieldAlert size={36} />
+          <div className="glass-panel" style={{ maxWidth: '500px', width: '100%', padding: '36px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px', border: '1px solid rgba(239, 68, 68, 0.4)', boxShadow: '0 8px 32px rgba(239, 68, 68, 0.2)' }}>
+            <div style={{ width: '72px', height: '72px', borderRadius: '24px', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+              <ShieldAlert size={42} />
             </div>
 
             <div>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '8px' }}>Access Denied</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                Only verified accounts with <strong>role = admin</strong> in the Cloud Firestore database are permitted to access the Admin Dashboard. Your account role is currently <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{user.role || 'user'}</span>.
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginBottom: '8px', color: '#fff' }}>⚠️ Access Denied</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem', lineHeight: '1.5' }}>
+                You do not have administrative privileges to view the Admin Dashboard. Only verified accounts with <strong>role = admin</strong> in Cloud Firestore are permitted.
               </p>
             </div>
 
-            <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', width: '100%', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-              🛡️ Admin privileges must be assigned directly in the <strong>Cloud Firestore database</strong> under the <code>users</code> or <code>admins</code> collection.
+            <div style={{ padding: '14px 18px', background: 'rgba(239, 68, 68, 0.1)', borderRadius: 'var(--radius-md)', border: '1px solid rgba(239, 68, 68, 0.25)', width: '100%', fontSize: '0.85rem', color: '#ef4444', fontWeight: 700 }}>
+              🏠 Redirecting to Home Page in {redirectCountdown} second{redirectCountdown !== 1 ? 's' : ''}...
             </div>
+
+            <button className="btn btn-primary" onClick={() => navigate('/')} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <span>Return to Home Now</span>
+            </button>
           </div>
         </main>
       </div>
