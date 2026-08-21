@@ -290,8 +290,13 @@ body {
   100% { left: 125%; }
 }
 
-@keyframes floatLogo {
-  0%, 100% { transform: translateY(0px) scale(1); }
-  50% { transform: translateY(-6px) scale(1.03); }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
+
+.spin {
+  animation: spin 0.8s linear infinite;
+}
+
 

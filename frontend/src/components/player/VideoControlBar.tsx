@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, Gauge, Zap, MessageSquare, Users, RefreshCw, Globe } from 'lucide-react';
 import { PlaybackState } from '../../types';
 
@@ -18,6 +19,7 @@ interface VideoControlBarProps {
   audioTracks?: AudioTrackItem[];
   selectedAudioTrackId?: number;
   aspectRatioLabel?: string;
+  isSyncing?: boolean;
   onSelectAudioTrack?: (trackId: number) => void;
   onPlay: () => void;
   onPause: () => void;
@@ -52,6 +54,7 @@ export const VideoControlBar: React.FC<VideoControlBarProps> = ({
   audioTracks,
   selectedAudioTrackId,
   aspectRatioLabel,
+  isSyncing = false,
   onSelectAudioTrack,
   onPlay,
   onPause,
@@ -64,6 +67,23 @@ export const VideoControlBar: React.FC<VideoControlBarProps> = ({
   onManualSync,
 }) => {
   const isPlaying = playbackState === 'PLAYING';
+  const [isSyncingLocal, setIsSyncingLocal] = useState(false);
+
+  useEffect(() => {
+    if (isPlaying || Math.abs(driftMs) < 1500) {
+      setIsSyncingLocal(false);
+    }
+  }, [isPlaying, driftMs]);
+
+  const handleSyncClick = () => {
+    setIsSyncingLocal(true);
+    if (onManualSync) {
+      onManualSync();
+    }
+    setTimeout(() => {
+      setIsSyncingLocal(false);
+    }, 3000);
+  };
 
   return (
     <div
@@ -191,7 +211,7 @@ export const VideoControlBar: React.FC<VideoControlBarProps> = ({
           {onManualSync && (
             <button
               className="btn btn-sm btn-primary"
-              onClick={onManualSync}
+              onClick={handleSyncClick}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -207,8 +227,13 @@ export const VideoControlBar: React.FC<VideoControlBarProps> = ({
               }}
               title="Sync video to latest room playback position"
             >
-              <RefreshCw size={13} />
-              <span>Sync Video</span>
+              <RefreshCw
+                size={13}
+                style={{
+                  animation: (isSyncing || isSyncingLocal) ? 'spin 0.8s linear infinite' : 'none',
+                }}
+              />
+              <span>{(isSyncing || isSyncingLocal) ? 'Syncing...' : 'Sync Video'}</span>
             </button>
           )}
 
