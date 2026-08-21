@@ -28,11 +28,26 @@ function formatBytes(bytes?: number | null): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
-function formatDuration(seconds?: number | null): string {
-  if (!seconds) return '0s';
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  if (mins > 0) return `${mins}m ${secs}s`;
+function formatDuration(seconds?: number | null, fileSize?: number | bigint | null): string {
+  let s = seconds ? Number(seconds) : 0;
+
+  // Smart fallback estimation for video files with missing duration metadata based on file size (~2.5 MB/min)
+  if ((!s || s <= 0) && fileSize) {
+    const bytes = Number(fileSize);
+    if (bytes > 0) {
+      const estimatedMinutes = bytes / (2.5 * 1024 * 1024);
+      s = Math.round(estimatedMinutes * 60);
+    }
+  }
+
+  if (!s || s <= 0) return 'N/A';
+
+  const hrs = Math.floor(s / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  const secs = Math.floor(s % 60);
+
+  if (hrs > 0) return `${hrs}h ${mins > 0 ? `${mins}m` : ''}`;
+  if (mins > 0) return `${mins}m ${secs > 0 ? `${secs}s` : ''}`;
   return `${secs}s`;
 }
 
@@ -156,6 +171,34 @@ export const AdminPage: React.FC = () => {
       (v.ownerEmail && v.ownerEmail.toLowerCase().includes(searchQuery.toLowerCase())) ||
       v.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Loading Spinner Screen
+  if (loading) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-dark)' }}>
+        <Navbar />
+        <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
+          <div className="glass-panel" style={{ maxWidth: '440px', width: '100%', padding: '40px 32px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '20px' }}>
+            <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
+              <RefreshCw size={32} style={{ animation: 'spin 1.2s linear infinite' }} />
+            </div>
+            <div>
+              <h2 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '6px', color: '#fff' }}>Loading Admin Dashboard...</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem' }}>
+                Verifying Firestore permissions & fetching room stats...
+              </p>
+            </div>
+            <style>{`
+              @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+              }
+            `}</style>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   // Role Gate: Non-Admin Access Screen with Warning & Redirect Banner
   if (user && user.role !== 'admin' && errorMsg) {
@@ -394,7 +437,7 @@ export const AdminPage: React.FC = () => {
                       <td style={{ padding: '14px 16px', fontWeight: 600 }}>
                         {v.sourceType === 'UPLOADED' ? formatBytes(v.fileSize) : 'N/A (YouTube)'}
                       </td>
-                      <td style={{ padding: '14px 16px' }}>{formatDuration(v.duration)}</td>
+                      <td style={{ padding: '14px 16px', fontWeight: 600 }}>{formatDuration(v.duration, v.fileSize)}</td>
                       <td style={{ padding: '14px 16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{ padding: '3px 8px', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 700, background: v.sourceType === 'YOUTUBE' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(99, 102, 241, 0.15)', color: v.sourceType === 'YOUTUBE' ? '#ef4444' : 'var(--primary)' }}>

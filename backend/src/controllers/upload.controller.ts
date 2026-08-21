@@ -74,7 +74,11 @@ export async function initiateUpload(req: AuthRequest, res: Response) {
     const chunkSize = env.DEFAULT_CHUNK_SIZE_MB * 1024 * 1024; // e.g. 10MB
     const totalChunks = Math.ceil(fileSize / chunkSize);
 
-    const parsedDuration = duration && !isNaN(Number(duration)) && Number(duration) > 0 ? Number(duration) : null;
+    let parsedDuration = duration && !isNaN(Number(duration)) && Number(duration) > 0 ? Number(duration) : null;
+    if (!parsedDuration && fileSize && Number(fileSize) > 0) {
+      const estimatedMinutes = Number(fileSize) / (2.5 * 1024 * 1024);
+      parsedDuration = Math.round(estimatedMinutes * 60);
+    }
 
     const video = await prisma.video.create({
       data: {
