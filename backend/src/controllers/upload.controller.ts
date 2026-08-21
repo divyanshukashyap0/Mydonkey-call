@@ -184,27 +184,15 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
         data: { completedChunks: completedCount },
       });
 
-      // Progressively write uploaded chunk bytes to combined.mp4 for instant streaming
+      // Progressively write uploaded chunk bytes to combined.mp4
       await appendChunkToCombinedFile(upload.id, upload.videoId, index, upload.chunkSize);
 
-      // Mark video as READY as soon as 1 chunk is uploaded so playback starts immediately
-      if (completedCount >= 1) {
-        const videoRecord = await prisma.video.findUnique({ where: { id: upload.videoId } });
-        if (videoRecord && videoRecord.status === 'UPLOADING') {
-          const updatedVideo = await prisma.video.update({
-            where: { id: upload.videoId },
-            data: { status: 'READY' },
-          });
-          syncVideoMetadataToFirestore(updatedVideo).catch(() => {});
-        }
-      }
-
-      // If all chunks uploaded, trigger combined assembly & FFmpeg background processing
+      // If all chunks uploaded, trigger combined assembly & background video processing
       if (completedCount === upload.totalChunks) {
         await prisma.upload.update({ where: { id: upload.id }, data: { status: 'PROCESSING' } });
         await prisma.video.update({ where: { id: upload.videoId }, data: { status: 'PROCESSING' } });
 
-        // Run background FFmpeg processing
+        // Run background FFmpeg / assembly processing
         processVideoFile(upload.id, upload.videoId).catch(console.error);
       }
 

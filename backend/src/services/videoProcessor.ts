@@ -40,6 +40,12 @@ export async function processVideoFile(uploadId: string, videoId: string): Promi
     });
 
     console.log(`✅ Combined ${chunkFiles.length} chunks into ${combinedFilePath}`);
+
+    // Mark video as READY now that all chunks are fully merged into a complete MP4 container
+    await prisma.video.update({
+      where: { id: videoId },
+      data: { status: 'READY', manifestUrl: `/api/videos/stream/${videoId}/index.m3u8` },
+    });
   } catch (err) {
     console.error('Failed to merge upload chunks:', err);
     await prisma.video.update({ where: { id: videoId }, data: { status: 'FAILED' } });
@@ -83,6 +89,8 @@ export async function processVideoFile(uploadId: string, videoId: string): Promi
 
   const ffmpegArgs = [
     '-i', combinedFilePath,
+    '-map', '0:v:0',
+    '-map', '0:a?',
     '-c:v', 'libx264',
     '-preset', 'fast',
     '-crf', '23',

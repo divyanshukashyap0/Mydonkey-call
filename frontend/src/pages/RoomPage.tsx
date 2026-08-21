@@ -63,6 +63,8 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
   const [duration, setDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [driftMs, setDriftMs] = useState(0);
+  const [audioTracks, setAudioTracks] = useState<Array<{ id: number; label: string; lang?: string }>>([]);
+  const [selectedAudioTrackId, setSelectedAudioTrackId] = useState<number>(0);
   const stageRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, showControls, toggleFullscreen } = useFullscreen(stageRef);
   const isProgrammaticActionRef = useRef(false);
@@ -445,32 +447,12 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
               ) : currentVideo?.sourceType === 'UPLOADED' && currentVideo.manifestUrl ? (
                 <HLSPlayer
                   manifestUrl={currentVideo.manifestUrl}
-                  onReady={(videoEl) => {
-                    playerRef.current = {
-                      getCurrentTime: () => videoEl.currentTime,
-                      getDuration: () => videoEl.duration || 0,
-                      playVideo: async () => {
-                        try {
-                          const p = videoEl.play();
-                          if (p !== undefined) await p;
-                        } catch (err: any) {
-                          if (err.name === 'NotAllowedError') {
-                            videoEl.muted = true;
-                            videoEl.play().catch(() => {});
-                          }
-                        }
-                      },
-                      pauseVideo: () => {
-                        try {
-                          videoEl.pause();
-                        } catch (err) {}
-                      },
-                      seekTo: (sec: number) => { videoEl.currentTime = sec; },
-                      setPlaybackRate: (r: number) => { videoEl.playbackRate = r; },
-                      getPlayerState: () => (videoEl.paused ? 2 : 1),
-                      mute: () => { videoEl.muted = true; },
-                      unMute: () => { videoEl.muted = false; },
-                    };
+                  onReady={(_videoEl, controller) => {
+                    playerRef.current = controller;
+                  }}
+                  onAudioTracksChange={(tracks, activeId) => {
+                    setAudioTracks(tracks);
+                    setSelectedAudioTrackId(activeId);
                   }}
                 />
               ) : (
@@ -702,6 +684,14 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                   isMuted={isMuted}
                   driftMs={driftMs}
                   canControl={canControl}
+                  audioTracks={audioTracks}
+                  selectedAudioTrackId={selectedAudioTrackId}
+                  onSelectAudioTrack={(trackId) => {
+                    setSelectedAudioTrackId(trackId);
+                    if (playerRef.current && playerRef.current.setAudioTrack) {
+                      playerRef.current.setAudioTrack(trackId);
+                    }
+                  }}
                   onPlay={handleUserPlay}
                   onPause={handleUserPause}
                   onSeek={handleUserSeek}

@@ -1,5 +1,11 @@
-import { Play, Pause, Volume2, VolumeX, Maximize, Gauge, Zap, MessageSquare, Users, RefreshCw } from 'lucide-react';
+import { Play, Pause, Volume2, VolumeX, Maximize, Gauge, Zap, MessageSquare, Users, RefreshCw, Globe } from 'lucide-react';
 import { PlaybackState } from '../../types';
+
+export interface AudioTrackItem {
+  id: number;
+  label: string;
+  lang?: string;
+}
 
 interface VideoControlBarProps {
   playbackState: PlaybackState;
@@ -9,6 +15,9 @@ interface VideoControlBarProps {
   isMuted: boolean;
   driftMs?: number;
   canControl: boolean;
+  audioTracks?: AudioTrackItem[];
+  selectedAudioTrackId?: number;
+  onSelectAudioTrack?: (trackId: number) => void;
   onPlay: () => void;
   onPause: () => void;
   onSeek: (position: number) => void;
@@ -39,6 +48,9 @@ export const VideoControlBar: React.FC<VideoControlBarProps> = ({
   isMuted,
   driftMs = 0,
   canControl,
+  audioTracks,
+  selectedAudioTrackId,
+  onSelectAudioTrack,
   onPlay,
   onPause,
   onSeek,
@@ -144,6 +156,34 @@ export const VideoControlBar: React.FC<VideoControlBarProps> = ({
               <option value={2.0}>2.0x</option>
             </select>
           </div>
+
+          {/* Audio Language / Track Selector (Per-Participant Local Preference) */}
+          {audioTracks && audioTracks.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }} title="Select your audio language">
+              <Globe size={14} color="var(--primary)" />
+              <select
+                value={selectedAudioTrackId ?? 0}
+                onChange={(e) => onSelectAudioTrack && onSelectAudioTrack(parseInt(e.target.value, 10))}
+                aria-label="Audio language selection"
+                style={{
+                  background: 'var(--bg-input)',
+                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                  color: 'var(--text-main)',
+                  padding: '4px 6px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                {audioTracks.map((track) => (
+                  <option key={track.id} value={track.id}>
+                    {track.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Sync Latest Video Button */}
           {onManualSync && (

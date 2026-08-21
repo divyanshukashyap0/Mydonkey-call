@@ -2,11 +2,32 @@ import React, { useEffect, useRef } from 'react';
 import Hls from 'hls.js';
 import { BACKEND_URL } from '../../config/apiConfig';
 
+export interface AudioTrackItem {
+  id: number;
+  label: string;
+  lang?: string;
+}
+
+export interface PlayerController {
+  getCurrentTime: () => number;
+  getDuration: () => number;
+  playVideo: () => Promise<void>;
+  pauseVideo: () => void;
+  seekTo: (sec: number) => void;
+  setPlaybackRate: (r: number) => void;
+  getPlayerState: () => number;
+  mute: () => void;
+  unMute: () => void;
+  getAudioTracks?: () => AudioTrackItem[];
+  setAudioTrack?: (trackId: number) => void;
+}
+
 interface HLSPlayerProps {
   manifestUrl: string;
-  onReady?: (videoElement: HTMLVideoElement) => void;
+  onReady?: (videoElement: HTMLVideoElement, controller: PlayerController) => void;
   onTimeUpdate?: (currentTime: number, duration: number) => void;
   onEnded?: () => void;
+  onAudioTracksChange?: (tracks: AudioTrackItem[], activeTrackId: number) => void;
 }
 
 export const HLSPlayer: React.FC<HLSPlayerProps> = ({
@@ -14,6 +35,7 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
   onReady,
   onTimeUpdate,
   onEnded,
+  onAudioTracksChange,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -27,12 +49,114 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
       ? manifestUrl
       : `${BACKEND_URL.replace(/\/$/, '')}${manifestUrl.startsWith('/') ? '' : '/'}${manifestUrl}`;
 
-    // Direct MP4 fallback URL (works instantly with HTTP 206 Range requests for uploaded videos)
     const mp4StreamUrl = fullManifestUrl.replace(/index\.m3u8.*$/, 'source.mp4');
 
     let isHlsLoaded = false;
-
     let retryTimer: any = null;
+
+    const extractNativeAudioTracks = (): AudioTrackItem[] => {
+      const nativeTracks = (video as any).audioTracks || (video as any).webkitAudioTracks;
+      if (nativeTracks && nativeTracks.length > 0) {
+        const items: AudioTrackItem[] = [];
+        for (let i = 0; i < nativeTracks.length; i++) {
+          const t = nativeTracks[i];
+          items.push({
+            id: i,
+            label: t.label || t.language || `Audio Track ${i + 1}`,
+            lang: t.language || undefined,
+          });
+        }
+        return items;
+      }
+      return [];
+    };
+
+    const buildController = (hlsInstance?: Hls | null): PlayerController => {
+      return {
+        getCurrentTime: () => video.currentTime,
+        getDuration: () => video.duration || 0,
+        playVideo: async () => {
+          try {
+            const p = video.play();
+            if (p !== undefined) await p;
+          } catch (err: any) {
+            if (err.name === 'NotAllowedError') {
+              video.muted = true;
+              video.play().catch(() => {});
+            }
+          }
+        },
+        pauseVideo: () => {
+          try {
+            video.pause();
+          } catch (err) {}
+        },
+        seekTo: (sec: number) => {
+          video.currentTime = sec;
+        },
+        setPlaybackRate: (r: number) => {
+          video.playbackRate = r;
+        },
+        getPlayerState: () => (video.paused ? 2 : 1),
+        mute: () => {
+          video.muted = true;
+        },
+        unMute: () => {
+          video.muted = false;
+        },
+        getAudioTracks: () => {
+          if (hlsInstance && hlsInstance.audioTracks.length > 0) {
+            return hlsInstance.audioTracks.map((t, idx) => ({
+              id: idx,
+              label: t.name || t.lang || `Track ${idx + 1}`,
+              lang: t.lang || undefined,
+            }));
+          }
+          return extractNativeAudioTracks();
+        },
+        setAudioTrack: (trackId: number) => {
+          if (hlsInstance && hlsInstance.audioTracks.length > 0) {
+            if (trackId >= 0 && trackId < hlsInstance.audioTracks.length) {
+              hlsInstance.audioTrack = trackId;
+            }
+          } else {
+            const nativeTracks = (video as any).audioTracks || (video as any).webkitAudioTracks;
+            if (nativeTracks && nativeTracks.length > 0) {
+              for (let i = 0; i < nativeTracks.length; i++) {
+                nativeTracks[i].enabled = i === trackId;
+              }
+            }
+          }
+        },
+      };
+    };
+
+    const notifyAudioTracks = (hlsInstance?: Hls | null) => {
+      if (!onAudioTracksChange) return;
+      if (hlsInstance && hlsInstance.audioTracks && hlsInstance.audioTracks.length > 0) {
+        const tracks: AudioTrackItem[] = hlsInstance.audioTracks.map((t, idx) => ({
+          id: idx,
+          label: t.name || (t.lang ? t.lang.toUpperCase() : `Audio Track ${idx + 1}`),
+          lang: t.lang || undefined,
+        }));
+        onAudioTracksChange(tracks, hlsInstance.audioTrack >= 0 ? hlsInstance.audioTrack : 0);
+      } else {
+        const nativeTracks = extractNativeAudioTracks();
+        if (nativeTracks.length > 0) {
+          let activeIndex = 0;
+          const rawTracks = (video as any).audioTracks || (video as any).webkitAudioTracks;
+          for (let i = 0; i < rawTracks.length; i++) {
+            if (rawTracks[i].enabled) {
+              activeIndex = i;
+              break;
+            }
+          }
+          onAudioTracksChange(nativeTracks, activeIndex);
+        } else {
+          onAudioTracksChange([{ id: 0, label: 'Default Audio Stream' }], 0);
+        }
+      }
+    };
 
     const setupNativePlayback = () => {
       if (!video) return;
@@ -44,11 +168,11 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
 
       const handleLoaded = () => {
         if (retryTimer) clearInterval(retryTimer);
-        if (onReady) onReady(video);
+        notifyAudioTracks(null);
+        if (onReady) onReady(video, buildController(null));
       };
 
       const handleError = () => {
-        // Only log real errors when video has metadata or non-transient failures
         if (video.error && video.readyState >= 1 && video.error.code !== 4) {
           console.warn('Video stream buffering notice:', video.error.message);
         }
@@ -60,15 +184,18 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
 
       if (video.readyState >= 1 && onReady) {
         if (retryTimer) clearInterval(retryTimer);
-        onReady(video);
+        notifyAudioTracks(null);
+        onReady(video, buildController(null));
       } else {
-        // If video container is still being written on backend, retry polling every 3.5s
         retryTimer = setInterval(() => {
           if (video && video.readyState < 1) {
             video.load();
           } else {
             if (retryTimer) clearInterval(retryTimer);
-            if (video && onReady) onReady(video);
+            if (video && onReady) {
+              notifyAudioTracks(null);
+              onReady(video, buildController(null));
+            }
           }
         }, 3500);
       }
@@ -94,7 +221,25 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
 
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         isHlsLoaded = true;
-        if (onReady) onReady(video);
+        notifyAudioTracks(hls);
+        if (onReady) onReady(video, buildController(hls));
+      });
+
+      hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, (_event, data) => {
+        if (data.audioTracks) {
+          notifyAudioTracks(hls);
+        }
+      });
+
+      hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_event, data) => {
+        if (onAudioTracksChange && hls.audioTracks) {
+          const tracks: AudioTrackItem[] = hls.audioTracks.map((t, idx) => ({
+            id: idx,
+            label: t.name || (t.lang ? t.lang.toUpperCase() : `Audio Track ${idx + 1}`),
+            lang: t.lang || undefined,
+          }));
+          onAudioTracksChange(tracks, data.id);
+        }
       });
 
       hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -115,7 +260,8 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
     } else if (video.canPlayType('application/vnd.apple.mpegurl') && fullManifestUrl.endsWith('.m3u8')) {
       video.src = fullManifestUrl;
       video.addEventListener('loadedmetadata', () => {
-        if (onReady) onReady(video);
+        notifyAudioTracks(null);
+        if (onReady) onReady(video, buildController(null));
       }, { once: true });
     } else {
       setupNativePlayback();

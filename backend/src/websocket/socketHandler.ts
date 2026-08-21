@@ -520,6 +520,10 @@ export function setupSocketIO(io: SocketIOServer) {
             socket.emit('error:message', { message: 'Uploaded video not found' });
             return;
           }
+          if (video.status === 'UPLOADING') {
+            socket.emit('error:message', { message: 'Video is still uploading. Please wait for upload to complete before playing in room.' });
+            return;
+          }
         } else if (youtubeUrl) {
           const ytId = extractYouTubeId(youtubeUrl);
           if (!ytId) {
