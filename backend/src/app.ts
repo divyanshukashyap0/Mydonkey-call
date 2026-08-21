@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import { env } from './config/env';
 import authRoutes from './routes/auth.routes';
 import roomRoutes from './routes/room.routes';
@@ -15,7 +16,7 @@ import adminRoutes from './routes/admin.routes';
 
 const app = express();
 
-// Custom High-Resiliency CORS & Header Middleware
+// Custom High-Resiliency CORS & Header Middleware (Must be FIRST before any other middleware)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin) {
@@ -39,6 +40,55 @@ app.use(cors({
   origin: (origin, callback) => callback(null, true),
   credentials: true,
 }));
+
+// HTTP Response Compression Middleware (Compress JSON/Text API payloads)
+app.use(
+  compression({
+    filter: (req, res) => {
+      // Do not compress binary octet-streams or streaming video responses
+      if (req.headers['x-no-compression'] || req.path.includes('/videos/stream')) {
+        return false;
+      }
+      return compression.filter(req, res);
+    },
+  })
+);
+
+// Production-Safe Bandwidth Response Monitoring Middleware
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  let bytesWritten = 0;
+
+  const originalWrite = res.write;
+  const originalEnd = res.end;
+
+  res.write = function (chunk: any, ...args: any[]): boolean {
+    if (chunk) {
+      bytesWritten += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
+    }
+    return originalWrite.apply(res, [chunk, ...args] as any);
+  };
+
+  res.end = function (chunk?: any, ...args: any[]): any {
+    if (chunk) {
+      bytesWritten += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
+    }
+    const duration = Date.now() - startTime;
+    const isBandwidthDebug = process.env.BANDWIDTH_DEBUG === 'true';
+
+    if (isBandwidthDebug || bytesWritten > 1024 * 1024) {
+      const sizeStr =
+        bytesWritten >= 1024 * 1024
+          ? `${(bytesWritten / (1024 * 1024)).toFixed(2)} MB`
+          : `${(bytesWritten / 1024).toFixed(2)} KB`;
+      console.log(`📊 [HTTP Bandwidth] ${req.method} ${req.originalUrl} | ${res.statusCode} | ${sizeStr} | ${duration}ms`);
+    }
+
+    return originalEnd.apply(res, [chunk, ...args] as any);
+  };
+
+  next();
+});
 
 app.use(express.json());
 

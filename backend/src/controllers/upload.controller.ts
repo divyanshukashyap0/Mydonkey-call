@@ -285,6 +285,19 @@ export async function streamVideoFile(req: Request, res: Response) {
       return res.status(400).send('Video ID required');
     }
 
+    // Check if the video points to an external source/CDN URL
+    const videoRecord = await prisma.video.findFirst({
+      where: { OR: [{ id: videoId }] },
+    }).catch(() => null);
+
+    if (videoRecord) {
+      const externalUrl = videoRecord.youtubeUrl || (videoRecord.manifestUrl?.startsWith('http') ? videoRecord.manifestUrl : null);
+      if (externalUrl && !externalUrl.includes('/api/videos/stream/')) {
+        // Redirect directly to external CDN / Video source to eliminate Render backend bandwidth consumption
+        return res.redirect(302, externalUrl);
+      }
+    }
+
     const rawSubPath = req.params[0] || 'index.m3u8';
     const subPath = rawSubPath.split('?')[0];
     let filePath = path.join(SEGMENTS_DIR, videoId, subPath);
@@ -296,6 +309,7 @@ export async function streamVideoFile(req: Request, res: Response) {
       } else if (subPath.endsWith('.ts')) {
         res.setHeader('Content-Type', 'video/MP2T');
       }
+      res.setHeader('Cache-Control', 'public, max-age=86400');
       return fs.createReadStream(filePath).pipe(res);
     }
 
@@ -312,6 +326,7 @@ export async function streamVideoFile(req: Request, res: Response) {
           const success = await regenerateSegmentOnDemand(roomId, videoId, segNum);
           if (success && fs.existsSync(filePath)) {
             res.setHeader('Content-Type', 'video/MP2T');
+            res.setHeader('Cache-Control', 'public, max-age=86400');
             return fs.createReadStream(filePath).pipe(res);
           }
         } catch (regenErr) {
@@ -350,12 +365,13 @@ export async function streamVideoFile(req: Request, res: Response) {
     }
 
     if (subPath.endsWith('.m3u8') || subPath === 'index.m3u8') {
-      const videoRecord = await prisma.video.findFirst({
+      const vRecord = videoRecord || await prisma.video.findFirst({
         where: { OR: [{ id: actualVideoId }, { id: videoId }] },
       }).catch(() => null);
-      const realDuration = (videoRecord && videoRecord.duration && videoRecord.duration > 0) ? Number(videoRecord.duration) : 0;
+      const realDuration = (vRecord && vRecord.duration && vRecord.duration > 0) ? Number(vRecord.duration) : 0;
 
       res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      res.setHeader('Cache-Control', 'no-cache');
       if (realDuration > 0) {
         const targetDur = Math.ceil(realDuration);
         const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:${targetDur}\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:${realDuration.toFixed(1)},\nsource.mp4\n#EXT-X-ENDLIST\n`;
@@ -385,6 +401,7 @@ export async function streamVideoFile(req: Request, res: Response) {
             'Accept-Ranges': 'bytes',
             'Content-Length': chunkSize.toString(),
             'Content-Type': 'video/mp4',
+            'Cache-Control': 'public, max-age=3600',
           });
           return file.pipe(res);
         } else {
@@ -392,6 +409,7 @@ export async function streamVideoFile(req: Request, res: Response) {
           res.set({
             'Content-Length': fileSize.toString(),
             'Content-Type': 'video/mp4',
+            'Cache-Control': 'public, max-age=3600',
           });
           return fs.createReadStream(combinedPath).pipe(res);
         }

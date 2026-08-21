@@ -68,7 +68,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           }
         })
         .catch((err) => {
-          if (err?.message?.includes('closing') || err?.message?.includes('hidden') || err?.toString?.().includes('closing')) {
+          const errStr = String(err?.message || err?.code || err || '');
+          if (
+            errStr.includes('argument-error') ||
+            errStr.includes('closing') ||
+            errStr.includes('hidden')
+          ) {
             return;
           }
           console.warn('Firebase redirect auth result notice:', err);
@@ -247,7 +252,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           isGuest: true,
         };
       } catch (fbErr: any) {
-        console.warn('Firebase Anonymous auth is disabled or unwhitelisted. Falling back to backend guest session API...', fbErr?.message || fbErr);
+        const errMsg = fbErr?.message || fbErr?.toString?.() || '';
+        if (errMsg.includes('closing') || errMsg.includes('hidden')) {
+          console.info('IndexedDB closing/hidden during guest auth. Falling back to backend guest session API...');
+        } else {
+          console.warn('Firebase Anonymous auth fallback to backend guest session API:', errMsg);
+        }
         const res = await api.guest(name);
         tokenStr = res.token;
         appUser = res.user;

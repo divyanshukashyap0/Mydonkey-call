@@ -183,7 +183,23 @@ export async function getAdminVideos(req: AuthRequest, res: Response) {
   try {
     const videos = await prisma.video.findMany({
       orderBy: { createdAt: 'desc' },
-      include: {
+      take: 50,
+      select: {
+        id: true,
+        ownerId: true,
+        sourceType: true,
+        title: true,
+        youtubeUrl: true,
+        youtubeVideoId: true,
+        originalFileName: true,
+        fileSize: true,
+        duration: true,
+        mimeType: true,
+        status: true,
+        manifestUrl: true,
+        thumbnailUrl: true,
+        createdAt: true,
+        updatedAt: true,
         owner: {
           select: { id: true, displayName: true, email: true },
         },
