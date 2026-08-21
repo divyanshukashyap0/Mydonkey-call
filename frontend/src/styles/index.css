@@ -1,24 +1,24 @@
 :root {
-  --bg-dark: #0a0d14;
-  --bg-card: rgba(18, 22, 36, 0.75);
-  --bg-card-hover: rgba(26, 32, 53, 0.85);
-  --bg-input: #151a2b;
+  --bg-dark: #08090d;
+  --bg-card: rgba(16, 18, 26, 0.82);
+  --bg-card-hover: rgba(26, 29, 42, 0.9);
+  --bg-input: #141722;
   --border-color: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(99, 102, 241, 0.4);
+  --border-glow: rgba(229, 9, 20, 0.45);
   
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-light: #818cf8;
-  --accent: #06b6d4;
-  --accent-glow: rgba(6, 182, 212, 0.3);
+  --primary: #e50914;
+  --primary-hover: #ff1e27;
+  --primary-light: #ff3b44;
+  --accent: #ff2e4d;
+  --accent-glow: rgba(255, 46, 77, 0.35);
   
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
 
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
+  --text-main: #ffffff;
+  --text-muted: #9ca3af;
+  --text-dim: #6b7280;
 
   --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
@@ -28,7 +28,7 @@
   --radius-lg: 18px;
   --radius-xl: 24px;
 
-  --shadow-glow: 0 0 25px rgba(99, 102, 241, 0.25);
+  --shadow-glow: 0 0 25px rgba(229, 9, 20, 0.3);
   --glass-backdrop: blur(16px) saturate(180%);
 
   /* Safe Area Support */
@@ -97,7 +97,7 @@ body {
 
 /* Typography Helpers */
 .gradient-text {
-  background: linear-gradient(135deg, #a5b4fc 0%, #6366f1 50%, #06b6d4 100%);
+  background: linear-gradient(135deg, #ff4d6d 0%, #e50914 50%, #ff2e4d 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -128,13 +128,13 @@ body {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary) 0%, #4338ca 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, #b81d24 100%);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 14px rgba(229, 9, 20, 0.4);
 }
 .btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6);
+  box-shadow: 0 6px 20px rgba(229, 9, 20, 0.6);
   background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
 }
 .btn-primary:active {

@@ -23,7 +23,7 @@ import { useSyncClock } from '../hooks/useSyncClock';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useSyncEngine } from '../hooks/useSyncEngine';
 import { connectSocket, getSocket } from '../services/socket';
-import { Tv, Sparkles, Plus, X, Terminal, ChevronLeft, ExternalLink, Minimize2, Users } from 'lucide-react';
+import { Tv, Sparkles, Plus, X, Terminal, ChevronLeft, ExternalLink, Minimize2, Users, Copy, UserPlus, Film, MessageSquare, Folder, Bookmark, Settings, Play, Pause, RefreshCw, Lock, Crown } from 'lucide-react';
 
 interface RoomPageProps {
   roomCode: string;
@@ -449,7 +449,116 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
 
       {/* Main Responsive Room Container */}
       <div className="room-layout-container">
-        {/* Left Side: Video Stage & Call Controls */}
+        {/* Left Side: Room Code, Nav Menu, Room Info & Connection Health */}
+        <div className="left-sidebar">
+          {/* Room Code Card */}
+          <div className="glass-panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)' }}>ROOM CODE</div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span className="mono" style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', letterSpacing: '2px' }}>{currentRoom?.roomCode}</span>
+              <button
+                className="btn btn-secondary btn-icon"
+                style={{ width: '32px', height: '32px' }}
+                onClick={() => {
+                  navigator.clipboard.writeText(currentRoom?.roomCode || '');
+                  alert('Room code copied to clipboard!');
+                }}
+                title="Copy Room Code"
+              >
+                <Copy size={14} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--success)' }}>
+              <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--success)' }} />
+              <span>Shareable</span>
+            </div>
+            <button
+              className="btn btn-primary"
+              style={{ width: '100%', fontSize: '0.82rem', padding: '8px 12px', background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' }}
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                alert('Room link copied to clipboard!');
+              }}
+            >
+              <UserPlus size={14} />
+              <span>Invite Friends</span>
+            </button>
+          </div>
+
+          {/* Navigation Items */}
+          <div className="glass-panel" style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            {[
+              { label: 'Watch Party', icon: Film, active: true },
+              { label: 'Chat', icon: MessageSquare },
+              { label: 'Participants', icon: Users },
+              { label: 'My Library', icon: Folder },
+              { label: 'Bookmarks', icon: Bookmark },
+              { label: 'Settings', icon: Settings },
+            ].map((item) => (
+              <div
+                key={item.label}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '9px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: item.active ? '#fff' : 'var(--text-muted)',
+                  background: item.active ? 'rgba(229, 9, 20, 0.22)' : 'transparent',
+                  borderLeft: item.active ? '3px solid var(--primary)' : '3px solid transparent',
+                  cursor: 'pointer',
+                }}
+              >
+                <item.icon size={15} color={item.active ? 'var(--primary)' : 'var(--text-muted)'} />
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Room Info */}
+          <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem' }}>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '2px' }}>ROOM INFO</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Room Name</span>
+              <strong style={{ color: '#fff' }}>{currentRoom?.currentVideo?.title ? currentRoom.currentVideo.title.slice(0, 14) + '...' : 'Watch Room'}</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Host</span>
+              <strong style={{ color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                {participants.find((p) => p.role === 'HOST')?.user?.displayName || 'Host'} 👑
+              </strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Privacy</span>
+              <strong style={{ color: '#fff' }}>Invite Only</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Expires In</span>
+              <strong style={{ color: 'var(--accent)' }}>24h Active</strong>
+            </div>
+          </div>
+
+          {/* Connection Health */}
+          <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '0.78rem' }}>
+            <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '2px' }}>CONNECTION</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Video</span>
+              <strong style={{ color: 'var(--success)' }}>Excellent</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>WebRTC</span>
+              <strong style={{ color: 'var(--success)' }}>Good</strong>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Server</span>
+              <strong style={{ color: 'var(--success)' }}>Excellent</strong>
+            </div>
+          </div>
+        </div>
+
+        {/* Center: Video Stage & Call Controls */}
         <div className="video-section">
           {/* Main Video Stage (Supports Fullscreen API) */}
           <div ref={stageRef} className="glass-panel video-stage">
@@ -741,19 +850,19 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
           </div>
         </div>
 
-        {/* Right Side Sidebar (Chat & Participants) */}
+        {/* Right Side Sidebar (Chat, Participants & Host Quick Controls) */}
         <div className="sidebar-section">
           <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
             <button
               className={`btn btn-sm ${activeTab === 'chat' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ flex: 1 }}
+              style={{ flex: 1, background: activeTab === 'chat' ? 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' : undefined }}
               onClick={() => setActiveTab('chat')}
             >
               Chat
             </button>
             <button
               className={`btn btn-sm ${activeTab === 'participants' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ flex: 1 }}
+              style={{ flex: 1, background: activeTab === 'participants' ? 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' : undefined }}
               onClick={() => setActiveTab('participants')}
             >
               Participants
@@ -767,6 +876,37 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
               <ParticipantList />
             )}
           </div>
+
+          {/* Host Quick Controls Panel */}
+          {canControl && (
+            <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+              <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Crown size={12} color="var(--warning)" />
+                <span>HOST CONTROLS</span>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleUserPlay}>
+                  <Play size={12} /> Play
+                </button>
+                <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleUserPause}>
+                  <Pause size={12} /> Pause
+                </button>
+                <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleManualSync}>
+                  <RefreshCw size={12} /> Sync
+                </button>
+                <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={() => getSocket().emit('room:toggle-lock')}>
+                  <Lock size={12} /> Lock
+                </button>
+              </div>
+              <button
+                className="btn btn-primary"
+                style={{ width: '100%', fontSize: '0.8rem', padding: '6px', background: 'linear-gradient(135deg, #e50914 0%, #990000 100%)' }}
+                onClick={() => setIsHostSettingsOpen(true)}
+              >
+                <span>End Room</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -781,6 +921,16 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
           max-width: 1920px;
           width: 100%;
           margin: 0 auto;
+        }
+
+        .left-sidebar {
+          width: 240px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          height: 100%;
+          overflow-y: auto;
+          flex-shrink: 0;
         }
 
         .video-section {
@@ -811,6 +961,12 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
           height: 100%;
           overflow: hidden;
           flex-shrink: 0;
+        }
+
+        @media (max-width: 1199px) {
+          .left-sidebar {
+            display: none;
+          }
         }
 
         /* Mobile Layout (< 768px) */

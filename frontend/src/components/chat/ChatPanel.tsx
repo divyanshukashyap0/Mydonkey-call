@@ -100,14 +100,54 @@ export const ChatPanel: React.FC = () => {
             className="input"
             placeholder="Type a message..."
             value={content}
-            maxLength={500}
             onChange={(e) => setContent(e.target.value)}
-            style={{ fontSize: '0.88rem', padding: '10px 14px' }}
+            maxLength={500}
+            style={{
+              flex: 1,
+              background: 'var(--bg-input)',
+              border: '1px solid var(--border-color)',
+              color: '#fff',
+              padding: '8px 12px',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.85rem',
+            }}
           />
-          <button type="submit" className="btn btn-primary btn-icon" disabled={!content.trim()} style={{ width: '42px', height: '42px', flexShrink: 0 }}>
-            <Send size={16} />
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={!content.trim()}
+            style={{ padding: '8px 12px', minWidth: 'auto', background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' }}
+          >
+            <Send size={15} />
           </button>
         </div>
+
+        {/* Quick Emoji Bar */}
+        <div style={{ display: 'flex', gap: '6px', justifyContent: 'space-between', marginTop: '2px' }}>
+          {['❤️', '😂', '😲', '🔥', '👏'].map((emoji) => (
+            <button
+              key={emoji}
+              type="button"
+              style={{
+                flex: 1,
+                background: 'rgba(255, 255, 255, 0.05)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '8px',
+                padding: '4px 0',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                transition: 'transform 0.15s ease',
+              }}
+              onClick={() => {
+                const socket = getSocket();
+                socket.emit('chat:send', { content: emoji });
+              }}
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
+        
         <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '0.7rem', color: content.length > 450 ? 'var(--warning)' : 'var(--text-dim)' }}>
           {content.length}/500
         </div>

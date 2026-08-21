@@ -61,7 +61,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
           <motion.div
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1 0%, #06b6d4 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)' }}
+            style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #e50914 0%, #ff2e4d 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 14px rgba(229, 9, 20, 0.4)' }}
           >
             <Tv size={20} color="#fff" />
           </motion.div>
