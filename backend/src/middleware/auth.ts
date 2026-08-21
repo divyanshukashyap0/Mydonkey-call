@@ -70,7 +70,7 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
     return res.status(403).json({ error: 'Invalid or expired authentication token' });
   }
 
-  // Ensure User record exists in Prisma DB to satisfy foreign keys and read role
+  // Ensure User record exists in Prisma DB to satisfy foreign keys and read/verify role against Cloud Firestore
   let role = 'user';
   try {
     let dbUser = await prisma.user.findUnique({ where: { id: userId } });
@@ -78,18 +78,29 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
       dbUser = await prisma.user.findUnique({ where: { email } });
     }
 
-    if (dbUser) {
+    // Verify Admin status against Cloud Firestore database
+    const { isUserAdminInFirestore } = await import('../services/firestoreSync');
+    const isAdminInFirestore = await isUserAdminInFirestore(userId, email);
+
+    if (isAdminInFirestore) {
+      role = 'admin';
+    } else if (dbUser) {
       role = (dbUser as any).role || 'user';
+    }
+
+    if (dbUser) {
+      if ((dbUser as any).role !== role) {
+        await prisma.user.update({ where: { id: dbUser.id }, data: { role } }).catch(() => {});
+      }
     } else {
       let finalEmail: string | undefined = undefined;
       if (email) {
         const existingWithEmail = await prisma.user.findUnique({ where: { email } });
         if (!existingWithEmail) finalEmail = email;
       }
-      const newUser = await prisma.user.create({
-        data: { id: userId, displayName, email: finalEmail, isGuest, role: 'user' },
-      });
-      role = (newUser as any).role || 'user';
+      await prisma.user.create({
+        data: { id: userId, displayName, email: finalEmail, isGuest, role },
+      }).catch(() => {});
     }
   } catch (err) {
     // Database sync error handler

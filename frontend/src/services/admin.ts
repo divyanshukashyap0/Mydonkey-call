@@ -93,13 +93,4 @@ export const adminApi = {
     });
     if (!res.ok) throw new Error('Failed to update user role');
   },
-
-  async toggleSelfAdmin(): Promise<{ role: string }> {
-    const res = await fetch(`${API_BASE}/admin/toggle-self`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) throw new Error('Failed to toggle admin role');
-    return res.json();
-  },
 };

@@ -6,13 +6,9 @@ import {
   getAdminWatchHistory,
   getAdminVideos,
   updateUserRole,
-  toggleAdminSelf,
 } from '../controllers/admin.controller';
 
 const router = Router();
-
-// Allow authenticated user to toggle self-admin for initial setup/testing
-router.post('/toggle-self', authenticateToken as any, toggleAdminSelf as any);
 
 // Protected Admin Routes (Requires role === 'admin')
 router.use(authenticateToken as any, requireAdmin as any);

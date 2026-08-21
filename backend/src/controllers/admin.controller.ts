@@ -115,32 +115,6 @@ export async function updateUserRole(req: AuthRequest, res: Response) {
   }
 }
 
-export async function toggleAdminSelf(req: AuthRequest, res: Response) {
-  try {
-    if (!req.user) return res.status(401).json({ error: 'Unauthorized' });
-    const targetRole = req.user.role === 'admin' ? 'user' : 'admin';
-
-    const updatedUser = await (prisma.user as any).update({
-      where: { id: req.user.id },
-      data: { role: targetRole },
-    });
-
-    await syncToFirestore('users', req.user.id, { role: targetRole, updatedAt: new Date().toISOString() });
-
-    return res.json({
-      message: `Your role is now ${targetRole}`,
-      role: targetRole,
-      user: {
-        id: updatedUser.id,
-        displayName: updatedUser.displayName,
-        role: updatedUser.role,
-      },
-    });
-  } catch (error: any) {
-    console.error('Toggle admin self error:', error);
-    return res.status(500).json({ error: 'Failed to toggle role' });
-  }
-}
 
 export async function getAdminWatchHistory(req: AuthRequest, res: Response) {
   try {

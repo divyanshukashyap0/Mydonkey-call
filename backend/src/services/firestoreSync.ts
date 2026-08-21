@@ -224,3 +224,67 @@ export async function syncFriendRequestToFirestore(request: {
     createdAt: request.createdAt ? (request.createdAt instanceof Date ? request.createdAt.toISOString() : request.createdAt) : new Date().toISOString(),
   });
 }
+
+function firestoreFieldsToJSON(fields: Record<string, any> | undefined): Record<string, any> {
+  if (!fields) return {};
+  const res: Record<string, any> = {};
+  for (const [k, v] of Object.entries(fields)) {
+    if (v.stringValue !== undefined) res[k] = v.stringValue;
+    else if (v.integerValue !== undefined) res[k] = Number(v.integerValue);
+    else if (v.doubleValue !== undefined) res[k] = v.doubleValue;
+    else if (v.booleanValue !== undefined) res[k] = v.booleanValue;
+    else if (v.nullValue !== undefined) res[k] = null;
+    else if (v.mapValue?.fields) res[k] = firestoreFieldsToJSON(v.mapValue.fields);
+  }
+  return res;
+}
+
+export async function getFirestoreDoc(collectionPath: string, docId: string): Promise<Record<string, any> | null> {
+  if (!docId) return null;
+  if (isFirebaseAdminInitialized) {
+    try {
+      const db = getAdminFirestore();
+      const snap = await db.collection(collectionPath).doc(docId).get();
+      if (snap.exists) return snap.data() || null;
+    } catch (e) {
+      // Fallback
+    }
+  }
+
+  try {
+    const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${collectionPath}/${encodeURIComponent(docId)}?key=${FIREBASE_API_KEY}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const json = await res.json();
+    return firestoreFieldsToJSON(json.fields);
+  } catch {
+    return null;
+  }
+}
+
+export async function isUserAdminInFirestore(userId: string, email?: string | null): Promise<boolean> {
+  try {
+    // 1. Check users/{userId} document
+    const userDoc = await getFirestoreDoc('users', userId);
+    if (userDoc && (userDoc.role === 'admin' || userDoc.isAdmin === true)) {
+      return true;
+    }
+
+    // 2. Check admins/{userId} document
+    const adminDoc = await getFirestoreDoc('admins', userId);
+    if (adminDoc && (adminDoc.role === 'admin' || adminDoc.isAdmin === true || Object.keys(adminDoc).length > 0)) {
+      return true;
+    }
+
+    // 3. Check admins/{email} document if email provided
+    if (email) {
+      const emailAdminDoc = await getFirestoreDoc('admins', email.toLowerCase());
+      if (emailAdminDoc && (emailAdminDoc.role === 'admin' || emailAdminDoc.isAdmin === true || Object.keys(emailAdminDoc).length > 0)) {
+        return true;
+      }
+    }
+  } catch (err: any) {
+    console.warn('Firestore admin check notice:', err.message);
+  }
+  return false;
+}

@@ -66,18 +66,6 @@ export const AdminPage: React.FC = () => {
     }
   }, [user?.role]);
 
-  const handleToggleSelfAdmin = async () => {
-    try {
-      const res = await adminApi.toggleSelfAdmin();
-      if (user) {
-        user.role = res.role;
-      }
-      await loadData();
-    } catch (err: any) {
-      alert(`Role change error: ${err.message}`);
-    }
-  };
-
   const handleUpdateRole = async (targetUserId: string, newRole: 'admin' | 'user') => {
     try {
       await adminApi.updateUserRole(targetUserId, newRole);
@@ -122,18 +110,13 @@ export const AdminPage: React.FC = () => {
             <div>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '8px' }}>Access Denied</h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.5' }}>
-                Only users with <strong>role = admin</strong> are permitted to access the Admin Dashboard. Your profile role is currently <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{user.role || 'user'}</span>.
+                Only verified accounts with <strong>role = admin</strong> in the Cloud Firestore database are permitted to access the Admin Dashboard. Your account role is currently <span style={{ color: 'var(--accent)', fontWeight: 700 }}>{user.role || 'user'}</span>.
               </p>
             </div>
 
-            <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', width: '100%', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              🔑 Testing Mode: Click below to grant <strong>role = admin</strong> to your account!
+            <div style={{ padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', width: '100%', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+              🛡️ Admin privileges must be assigned directly in the <strong>Cloud Firestore database</strong> under the <code>users</code> or <code>admins</code> collection.
             </div>
-
-            <button className="btn btn-primary" onClick={handleToggleSelfAdmin} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <ShieldCheck size={18} />
-              <span>Promote My Account to Admin</span>
-            </button>
           </div>
         </main>
       </div>
@@ -166,10 +149,10 @@ export const AdminPage: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', gap: '10px' }}>
-            <button className="btn btn-secondary btn-sm" onClick={handleToggleSelfAdmin} title="Toggle role">
+            <div className="btn btn-secondary btn-sm" style={{ cursor: 'default', pointerEvents: 'none' }}>
               <ShieldCheck size={16} color="var(--primary-light)" />
-              <span>Role: {user?.role || 'user'}</span>
-            </button>
+              <span>Role: {user?.role || 'admin'}</span>
+            </div>
 
             <button className="btn btn-secondary btn-sm" onClick={loadData} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <RefreshCw size={16} className={loading ? 'spin' : ''} />
