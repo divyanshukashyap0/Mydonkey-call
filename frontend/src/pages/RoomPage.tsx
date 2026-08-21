@@ -414,6 +414,37 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
       <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-dark)' }}>
       <Navbar onOpenCreateModal={() => setIsHostSettingsOpen(true)} />
 
+      {/* Mobile Telemetry Subheader Bar */}
+      <div
+        className="mobile-subheader-bar"
+        style={{
+          padding: '8px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'rgba(14, 16, 22, 0.85)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          fontSize: '0.82rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+          <Film size={15} color="var(--primary)" />
+          <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '160px' }}>
+            {currentVideo?.title || 'Avengers: Endgame'}
+          </strong>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '2px 8px', borderRadius: '12px', color: 'var(--success)', fontSize: '0.72rem' }}>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
+            <span>Synced (+0.12s)</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+            <Users size={13} />
+            <span>{participants.length}</span>
+          </div>
+        </div>
+      </div>
+
       {/* Top Controls Bar (Ready System + Connection Health + Debug Console) */}
       <div style={{ padding: '8px 16px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
         {currentRoom && user && (
@@ -951,6 +982,46 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Fixed Bottom Mobile Navigation Bar */}
+      <div className="mobile-bottom-tabbar">
+        <button
+          className={`mobile-tab-item ${activeTab === 'chat' ? '' : 'active'}`}
+          onClick={() => {
+            setActiveTab('chat');
+            stageRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }}
+        >
+          <Tv size={18} />
+          <span>Video</span>
+        </button>
+
+        <button
+          className={`mobile-tab-item ${activeTab === 'chat' ? 'active' : ''}`}
+          onClick={() => setActiveTab('chat')}
+        >
+          <MessageSquare size={18} />
+          <span>Chat</span>
+          <span className="mobile-tab-badge">3</span>
+        </button>
+
+        <button
+          className={`mobile-tab-item ${activeTab === 'participants' ? 'active' : ''}`}
+          onClick={() => setActiveTab('participants')}
+        >
+          <Users size={18} />
+          <span>Participants</span>
+          <span className="mobile-tab-badge">{participants.length}</span>
+        </button>
+
+        <button
+          className="mobile-tab-item"
+          onClick={() => setIsHostSettingsOpen(true)}
+        >
+          <Settings size={18} />
+          <span>Settings</span>
+        </button>
       </div>
 
       {/* Responsive Watch Room Layout CSS Engine */}

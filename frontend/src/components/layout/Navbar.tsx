@@ -56,21 +56,31 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
           gap: '12px',
         }}
       >
-        {/* Brand Logo */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', minWidth: 0 }}>
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'linear-gradient(135deg, #e50914 0%, #ff2e4d 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 14px rgba(229, 9, 20, 0.4)' }}
+        {/* Brand Logo & Hamburger */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            className="mobile-hamburger-btn"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle menu"
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
           >
-            <Tv size={20} color="#fff" />
-          </motion.div>
-          <div style={{ minWidth: 0 }}>
-            <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }} className="gradient-text">
-              MyDonkey Call
-            </span>
-          </div>
-        </Link>
+            {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', minWidth: 0 }}>
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, #e50914 0%, #ff2e4d 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 14px rgba(229, 9, 20, 0.4)' }}
+            >
+              <Tv size={18} color="#fff" />
+            </motion.div>
+            <div style={{ minWidth: 0 }}>
+              <span style={{ fontSize: '1.05rem', fontWeight: 800, letterSpacing: '-0.02em', whiteSpace: 'nowrap' }} className="gradient-text">
+                myDonkey-call
+              </span>
+            </div>
+          </Link>
+        </div>
 
         {/* Desktop Navigation */}
         <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
