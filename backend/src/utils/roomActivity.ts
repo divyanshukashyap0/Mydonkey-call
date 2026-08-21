@@ -1,13 +1,13 @@
 import { prisma } from '../db/prisma';
 
-export const INACTIVITY_TIMEOUT_MS = 60 * 60 * 1000; // 60 Minutes (1 Hour)
+export const INACTIVITY_TIMEOUT_MS = 100 * 365 * 24 * 60 * 60 * 1000; // Permanent rooms (No Expiration)
 
 /**
- * Resets the 60-minute inactivity countdown for a room whenever user activity occurs.
+ * Updates room activity timestamp without expiring rooms.
  */
 export async function touchRoomActivity(roomIdOrCode: string): Promise<Date | null> {
   try {
-    const newExpiresAt = new Date(Date.now() + INACTIVITY_TIMEOUT_MS);
+    const newExpiresAt = new Date('2099-12-31T23:59:59Z');
 
     const room = await prisma.room.findFirst({
       where: {
@@ -30,7 +30,7 @@ export async function touchRoomActivity(roomIdOrCode: string): Promise<Date | nu
 
     return newExpiresAt;
   } catch (err: any) {
-    console.warn(`[touchRoomActivity Warning] Failed to update expiration for ${roomIdOrCode}:`, err.message);
+    console.warn(`[touchRoomActivity Warning] Failed to update room activity for ${roomIdOrCode}:`, err.message);
     return null;
   }
 }

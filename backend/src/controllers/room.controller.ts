@@ -34,7 +34,7 @@ export async function createRoom(req: AuthRequest, res: Response) {
       return res.status(500).json({ error: 'Failed to generate unique room code' });
     }
 
-    const expiresAt = new Date(Date.now() + INACTIVITY_TIMEOUT_MS); // 60 Minutes Inactivity Expiration Window
+    const expiresAt = new Date('2099-12-31T23:59:59Z'); // Permanent Room (No Expiration)
 
     const room = await prisma.room.create({
       data: {
@@ -100,11 +100,7 @@ export async function getRoomByCode(req: AuthRequest, res: Response) {
       return res.status(404).json({ error: 'Room not found' });
     }
 
-    if (new Date() > room.expiresAt) {
-      return res.status(410).json({ error: 'This room has expired after 60 minutes of inactivity.' });
-    }
-
-    // Refresh 60-minute inactivity timer on room fetch
+    // Touch room activity log
     touchRoomActivity(room.id).catch(() => {});
 
     const formattedRoom = {
@@ -137,10 +133,6 @@ export async function joinRoom(req: AuthRequest, res: Response) {
 
     if (!room) {
       return res.status(404).json({ error: 'Room not found' });
-    }
-
-    if (new Date() > room.expiresAt) {
-      return res.status(410).json({ error: 'This room has expired after 60 minutes of inactivity.' });
     }
 
     if (room.isLocked && room.hostId !== req.user.id) {

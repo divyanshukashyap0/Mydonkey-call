@@ -118,11 +118,11 @@ export const AdminPage: React.FC = () => {
   };
 
   const handleDeleteRoom = async (roomId: string, roomCode: string) => {
-    if (window.confirm(`Are you sure you want to expire and delete room ${roomCode}? Connected participants will be disconnected.`)) {
+    if (window.confirm(`Are you sure you want to delete room ${roomCode}? Connected participants will be disconnected.`)) {
       try {
         await adminApi.deleteRoom(roomId);
         setRooms((prev) => prev.filter((r) => r.id !== roomId));
-        showToast(`Room ${roomCode} has been expired & deleted.`, 'info');
+        showToast(`Room ${roomCode} has been deleted.`, 'info');
       } catch (err: any) {
         showToast(`Failed to delete room: ${err.message}`, 'error');
       }
@@ -436,7 +436,7 @@ export const AdminPage: React.FC = () => {
                 <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                   <th style={{ padding: '14px 16px' }}>Room Code & Name</th>
                   <th style={{ padding: '14px 16px' }}>Host User</th>
-                  <th style={{ padding: '14px 16px' }}>Creation & Expire Date/Time</th>
+                  <th style={{ padding: '14px 16px' }}>Creation Date & Time</th>
                   <th style={{ padding: '14px 16px' }}>Playing Movie / Video</th>
                   <th style={{ padding: '14px 16px' }}>Active Participants</th>
                   <th style={{ padding: '14px 16px' }}>Control & Lock</th>
@@ -462,15 +462,9 @@ export const AdminPage: React.FC = () => {
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.hostEmail}</div>
                       </td>
                       <td style={{ padding: '14px 16px', color: 'var(--text-muted)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <Clock size={12} color="#10b981" />
-                            <span>Created: <strong>{new Date(r.createdAt).toLocaleString()}</strong></span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <Clock size={12} color="#ef4444" />
-                            <span>Expires: <strong>{new Date(r.expiresAt).toLocaleString()}</strong></span>
-                          </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.82rem' }}>
+                          <Clock size={13} color="#10b981" />
+                          <span>{new Date(r.createdAt).toLocaleString()}</span>
                         </div>
                       </td>
                       <td style={{ padding: '14px 16px' }}>
@@ -522,7 +516,7 @@ export const AdminPage: React.FC = () => {
                             padding: '4px 10px',
                           }}
                         >
-                          Expire & Delete
+                          Delete Room
                         </button>
                       </td>
                     </tr>
