@@ -166,13 +166,13 @@ export class ResumableUploader {
     if (this.isPaused || this.completedChunks.has(index)) return true;
 
     let attempts = 0;
-    const maxAttempts = 6;
+    const maxAttempts = 8;
     while (attempts < maxAttempts && !this.isPaused) {
       const success = await this.uploadSingleChunkWithXHR(index, token);
       if (success) return true;
 
       attempts++;
-      const delay = Math.min(1000 * Math.pow(1.5, attempts), 5000);
+      const delay = Math.min(1000 * Math.pow(1.5, attempts), 6000);
       await new Promise((r) => setTimeout(r, delay));
     }
     return false;
@@ -180,7 +180,7 @@ export class ResumableUploader {
 
   private async uploadLoop() {
     const token = localStorage.getItem('mydonkey_token');
-    const CONCURRENCY = 2; // 2 Parallel chunk upload streams to prevent HTTP/2 stream multiplexing collisions
+    const CONCURRENCY = 1; // Sequential chunk upload stream to guarantee zero Render/Cloudflare proxy multiplexing drops (502 / ERR_HTTP2_PROTOCOL_ERROR)
 
     const pendingIndexes = Array.from({ length: this.totalChunks }, (_, i) => i).filter(
       (idx) => !this.completedChunks.has(idx)

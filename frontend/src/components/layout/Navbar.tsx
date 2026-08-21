@@ -325,13 +325,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
 
       {/* Responsive Header CSS Rules */}
       <style>{`
-        @media (max-width: 767px) {
+        @media (max-width: 991px) {
           .desktop-nav { display: none !important; }
-          .mobile-nav-toggle { display: flex !important; }
+          .mobile-hamburger-btn { display: flex !important; }
         }
-        @media (min-width: 768px) {
+        @media (min-width: 992px) {
           .desktop-nav { display: flex !important; }
-          .mobile-nav-toggle { display: none !important; }
+          .mobile-hamburger-btn { display: none !important; }
         }
       `}</style>
 

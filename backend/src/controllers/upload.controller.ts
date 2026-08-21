@@ -257,6 +257,7 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
 }
 
 export async function getUploadStatus(req: AuthRequest, res: Response) {
+  ensureCorsHeaders(req, res);
   try {
     const { uploadId } = req.params;
     const upload = await prisma.upload.findUnique({
@@ -267,18 +268,47 @@ export async function getUploadStatus(req: AuthRequest, res: Response) {
     if (!upload) return res.status(404).json({ error: 'Upload not found' });
 
     const completedIndexes = upload.chunks.map((c) => c.chunkIndex);
-
     return res.json({
       uploadId: upload.id,
       videoId: upload.videoId,
-      totalChunks: upload.totalChunks,
-      completedChunks: upload.completedChunks,
-      completedIndexes,
       status: upload.status,
+      completedChunks: completedIndexes.length,
+      totalChunks: upload.totalChunks,
+      completedIndexes,
     });
   } catch (error: any) {
-    console.error('Get upload status error:', error);
+    ensureCorsHeaders(req, res);
     return res.status(500).json({ error: 'Failed to fetch upload status' });
+  }
+}
+
+export async function checkChunkStatus(req: AuthRequest, res: Response) {
+  ensureCorsHeaders(req, res);
+  try {
+    const { uploadId, chunkIndex } = req.params;
+    const index = parseInt(chunkIndex, 10);
+
+    const chunkRecord = await prisma.uploadChunk.findUnique({
+      where: {
+        uploadId_chunkIndex: {
+          uploadId,
+          chunkIndex: index,
+        },
+      },
+    });
+
+    if (chunkRecord && chunkRecord.isUploaded) {
+      return res.json({ uploadId, chunkIndex: index, uploaded: true });
+    }
+
+    const uploadDir = path.join(ORIGINAL_DIR, uploadId);
+    const chunkPath = path.join(uploadDir, `chunk_${String(index).padStart(4, '0')}.part`);
+    const exists = fs.existsSync(chunkPath);
+
+    return res.json({ uploadId, chunkIndex: index, uploaded: exists });
+  } catch (err: any) {
+    ensureCorsHeaders(req, res);
+    return res.status(500).json({ error: err.message });
   }
 }
 
