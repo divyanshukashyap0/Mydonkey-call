@@ -59,7 +59,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               isGuest: false,
             };
 
-            await api.syncFirebaseUser(appUser).catch(() => {});
+            const syncedRes = await api.syncFirebaseUser(appUser).catch(() => null);
+            if (syncedRes?.user?.role) {
+              appUser.role = syncedRes.user.role;
+            }
             syncUserClient(appUser).catch(() => {});
 
             clearTimeout(safetyTimer);
@@ -98,7 +101,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           };
 
           // Sync profile document with backend / Firestore
-          await api.syncFirebaseUser(appUser).catch(() => {});
+          const syncedRes = await api.syncFirebaseUser(appUser).catch(() => null);
+          if (syncedRes?.user?.role) {
+            appUser.role = syncedRes.user.role;
+          }
           syncUserClient(appUser).catch(() => {});
 
           set({ user: appUser, token: idToken, isLoading: false, error: null });

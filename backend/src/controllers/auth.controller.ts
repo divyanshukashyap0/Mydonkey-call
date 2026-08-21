@@ -207,6 +207,14 @@ export async function syncFirebaseUser(req: Request, res: Response) {
       });
     }
 
+    const authRole = (req as AuthRequest).user?.role || (user as any).role || 'user';
+    if ((user as any).role !== authRole) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { role: authRole },
+      });
+    }
+
     // Sync User Profile in Firestore
     await saveUserProfileToFirestore({
       uid: user.id,
@@ -214,6 +222,7 @@ export async function syncFirebaseUser(req: Request, res: Response) {
       displayName: user.displayName,
       photoURL: user.avatarUrl,
       isGuest: user.isGuest,
+      role: (user as any).role,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
     });

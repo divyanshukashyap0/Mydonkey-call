@@ -239,7 +239,7 @@ function firestoreFieldsToJSON(fields: Record<string, any> | undefined): Record<
   return res;
 }
 
-export async function getFirestoreDoc(collectionPath: string, docId: string): Promise<Record<string, any> | null> {
+export async function getFirestoreDoc(collectionPath: string, docId: string, token?: string | null): Promise<Record<string, any> | null> {
   if (!docId) return null;
   if (isFirebaseAdminInitialized) {
     try {
@@ -247,13 +247,17 @@ export async function getFirestoreDoc(collectionPath: string, docId: string): Pr
       const snap = await db.collection(collectionPath).doc(docId).get();
       if (snap.exists) return snap.data() || null;
     } catch (e) {
-      // Fallback
+      // Fallback to REST API
     }
   }
 
   try {
     const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${collectionPath}/${encodeURIComponent(docId)}?key=${FIREBASE_API_KEY}`;
-    const res = await fetch(url);
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(url, { headers });
     if (!res.ok) return null;
     const json = await res.json();
     return firestoreFieldsToJSON(json.fields);
@@ -262,23 +266,23 @@ export async function getFirestoreDoc(collectionPath: string, docId: string): Pr
   }
 }
 
-export async function isUserAdminInFirestore(userId: string, email?: string | null): Promise<boolean> {
+export async function isUserAdminInFirestore(userId: string, email?: string | null, token?: string | null): Promise<boolean> {
   try {
-    // 1. Check users/{userId} document
-    const userDoc = await getFirestoreDoc('users', userId);
+    // 1. Check users/{userId} document in Firestore
+    const userDoc = await getFirestoreDoc('users', userId, token);
     if (userDoc && (userDoc.role === 'admin' || userDoc.isAdmin === true)) {
       return true;
     }
 
-    // 2. Check admins/{userId} document
-    const adminDoc = await getFirestoreDoc('admins', userId);
+    // 2. Check admins/{userId} document in Firestore
+    const adminDoc = await getFirestoreDoc('admins', userId, token);
     if (adminDoc && (adminDoc.role === 'admin' || adminDoc.isAdmin === true || Object.keys(adminDoc).length > 0)) {
       return true;
     }
 
-    // 3. Check admins/{email} document if email provided
+    // 3. Check admins/{email} document in Firestore if email provided
     if (email) {
-      const emailAdminDoc = await getFirestoreDoc('admins', email.toLowerCase());
+      const emailAdminDoc = await getFirestoreDoc('admins', email.toLowerCase(), token);
       if (emailAdminDoc && (emailAdminDoc.role === 'admin' || emailAdminDoc.isAdmin === true || Object.keys(emailAdminDoc).length > 0)) {
         return true;
       }

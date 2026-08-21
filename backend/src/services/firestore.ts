@@ -6,6 +6,7 @@ export interface FirestoreUserProfile {
   displayName: string;
   photoURL?: string | null;
   isGuest: boolean;
+  role?: string;
   createdAt: string;
   updatedAt: string;
 }

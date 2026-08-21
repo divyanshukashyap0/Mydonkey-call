@@ -80,7 +80,7 @@ export async function authenticateToken(req: AuthRequest, res: Response, next: N
 
     // Verify Admin status against Cloud Firestore database
     const { isUserAdminInFirestore } = await import('../services/firestoreSync');
-    const isAdminInFirestore = await isUserAdminInFirestore(userId, email);
+    const isAdminInFirestore = await isUserAdminInFirestore(userId, email, token);
 
     if (isAdminInFirestore) {
       role = 'admin';
