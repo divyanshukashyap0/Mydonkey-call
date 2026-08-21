@@ -1,8 +1,24 @@
 import React, { useEffect, useState } from 'react';
 import { Navbar } from '../components/layout/Navbar';
 import { useAuthStore } from '../store/useAuthStore';
-import { adminApi, AdminStats, AdminUser, AdminWatchHistoryItem, AdminVideo } from '../services/admin';
-import { Users, History, Film, HardDrive, RefreshCw, Shield, ExternalLink, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { adminApi, AdminStats, AdminUser, AdminWatchHistoryItem, AdminVideo, AdminRoom } from '../services/admin';
+import {
+  Users,
+  History,
+  Film,
+  HardDrive,
+  RefreshCw,
+  Shield,
+  ExternalLink,
+  ShieldAlert,
+  ShieldCheck,
+  DoorOpen,
+  Activity,
+  Clock,
+  UserCheck,
+  Lock,
+  Unlock,
+} from 'lucide-react';
 
 function formatBytes(bytes?: number | null): string {
   if (!bytes || bytes === 0) return '0 B';
@@ -21,15 +37,16 @@ function formatDuration(seconds?: number | null): string {
 }
 
 import { motion } from 'framer-motion';
-import { pageEntrance, staggerContainer, staggerItem } from '../animations';
+import { pageEntrance } from '../animations';
 
 export const AdminPage: React.FC = () => {
-  const { user, token } = useAuthStore();
+  const { user } = useAuthStore();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [rooms, setRooms] = useState<AdminRoom[]>([]);
   const [watchHistory, setWatchHistory] = useState<AdminWatchHistoryItem[]>([]);
   const [videos, setVideos] = useState<AdminVideo[]>([]);
-  const [activeTab, setActiveTab] = useState<'users' | 'history' | 'videos'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'rooms' | 'videos' | 'history'>('videos');
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,15 +55,17 @@ export const AdminPage: React.FC = () => {
     setLoading(true);
     setErrorMsg(null);
     try {
-      const [sData, uData, hData, vData] = await Promise.all([
+      const [sData, uData, rData, hData, vData] = await Promise.all([
         adminApi.getStats(),
         adminApi.getUsers(),
+        adminApi.getRooms(),
         adminApi.getWatchHistory(),
         adminApi.getVideos(),
       ]);
 
       setStats(sData);
       setUsers(uData);
+      setRooms(rData);
       setWatchHistory(hData);
       setVideos(vData);
     } catch (err: any) {
@@ -82,6 +101,15 @@ export const AdminPage: React.FC = () => {
       u.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredRooms = rooms.filter(
+    (r) =>
+      r.roomCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.hostDisplayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.hostEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.currentVideo?.title && r.currentVideo.title.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   const filteredHistory = watchHistory.filter(
     (h) =>
       h.videoTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -93,6 +121,7 @@ export const AdminPage: React.FC = () => {
     (v) =>
       v.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.ownerDisplayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (v.ownerEmail && v.ownerEmail.toLowerCase().includes(searchQuery.toLowerCase())) ||
       v.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -132,7 +161,7 @@ export const AdminPage: React.FC = () => {
         initial="initial"
         animate="animate"
         exit="exit"
-        style={{ flex: 1, padding: '32px 24px', maxWidth: '1280px', width: '100%', margin: '0 auto' }}
+        style={{ flex: 1, padding: '32px 24px', maxWidth: '1360px', width: '100%', margin: '0 auto' }}
       >
         {/* Header Title */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
@@ -141,10 +170,10 @@ export const AdminPage: React.FC = () => {
               <div style={{ padding: '8px', borderRadius: '12px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', color: 'var(--primary)' }}>
                 <Shield size={24} />
               </div>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Admin Database Inspection</h1>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>Admin Dashboard & Traffic Inspection</h1>
             </div>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-              Live Firestore & DB metrics for User Details, Watch History, and Video Metadata.
+              Real-time monitoring for User Uploads, All Room Details, and Render Backend Bandwidth Consumption.
             </p>
           </div>
 
@@ -163,43 +192,69 @@ export const AdminPage: React.FC = () => {
 
         {/* Stats Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '32px' }}>
-          <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(99, 102, 241, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)' }}>
-              <Users size={24} />
+          {/* Render Backend Bandwidth */}
+          <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid rgba(99, 102, 241, 0.35)', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(15, 23, 42, 0.6) 100%)' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(99, 102, 241, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#6366f1' }}>
+              <Activity size={24} />
             </div>
             <div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Users</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats?.totalUsers ?? users.length}</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 600 }}>Render Backend Bandwidth</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800, color: '#818cf8' }}>
+                {formatBytes(stats?.totalHttpBytesServed ?? 0)}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>
+                {stats?.totalHttpRequestsServed ?? 0} API Requests
+              </div>
             </div>
           </div>
 
-          <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--success)' }}>
-              <History size={24} />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Watch Events</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats?.totalWatchEvents ?? watchHistory.length}</div>
-            </div>
-          </div>
-
-          <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warning)' }}>
-              <Film size={24} />
-            </div>
-            <div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Videos Metadata</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{stats?.totalVideos ?? videos.length}</div>
-            </div>
-          </div>
-
+          {/* Uploaded Storage */}
           <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(236, 72, 153, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ec4899' }}>
               <HardDrive size={24} />
             </div>
             <div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Storage Used</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>{formatBytes(stats?.totalStorageBytes)}</div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Uploaded Storage</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{formatBytes(stats?.totalStorageBytes)}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Total Video Files</div>
+            </div>
+          </div>
+
+          {/* All Rooms */}
+          <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(16, 185, 129, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+              <DoorOpen size={24} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Total Rooms</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{stats?.totalRooms ?? rooms.length}</div>
+              <div style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 600 }}>
+                {rooms.filter(r => r.activeParticipantCount > 0).length} Active Now
+              </div>
+            </div>
+          </div>
+
+          {/* Total Users */}
+          <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(245, 158, 11, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--warning)' }}>
+              <Users size={24} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Total Users</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{stats?.totalUsers ?? users.length}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>Registered & Guests</div>
+            </div>
+          </div>
+
+          {/* Total Videos */}
+          <div className="glass-panel" style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(59, 130, 246, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6' }}>
+              <Film size={24} />
+            </div>
+            <div>
+              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Content Items</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 800 }}>{stats?.totalVideos ?? videos.length}</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)' }}>YouTube & Uploaded</div>
             </div>
           </div>
         </div>
@@ -208,12 +263,30 @@ export const AdminPage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', gap: '8px', background: 'var(--bg-input)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
             <button
+              className={`btn btn-sm ${activeTab === 'videos' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('videos')}
+              style={{ padding: '8px 16px' }}
+            >
+              <Film size={16} />
+              <span>User Uploaded Content ({videos.length})</span>
+            </button>
+
+            <button
+              className={`btn btn-sm ${activeTab === 'rooms' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setActiveTab('rooms')}
+              style={{ padding: '8px 16px' }}
+            >
+              <DoorOpen size={16} />
+              <span>All Room Details ({rooms.length})</span>
+            </button>
+
+            <button
               className={`btn btn-sm ${activeTab === 'users' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setActiveTab('users')}
               style={{ padding: '8px 16px' }}
             >
               <Users size={16} />
-              <span>User Details ({users.length})</span>
+              <span>User Profiles ({users.length})</span>
             </button>
 
             <button
@@ -223,15 +296,6 @@ export const AdminPage: React.FC = () => {
             >
               <History size={16} />
               <span>Watch History ({watchHistory.length})</span>
-            </button>
-
-            <button
-              className={`btn btn-sm ${activeTab === 'videos' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setActiveTab('videos')}
-              style={{ padding: '8px 16px' }}
-            >
-              <Film size={16} />
-              <span>Video Metadata ({videos.length})</span>
             </button>
           </div>
 
@@ -245,7 +309,168 @@ export const AdminPage: React.FC = () => {
           />
         </div>
 
-        {/* Tab 1: Users Table */}
+        {/* Tab 1: Uploaded Content Details (Which user uploaded which content & time) */}
+        {activeTab === 'videos' && (
+          <div className="glass-panel" style={{ overflowX: 'auto', padding: 0 }}>
+            <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                  <th style={{ padding: '14px 16px' }}>Content Title / File</th>
+                  <th style={{ padding: '14px 16px' }}>Uploaded By User</th>
+                  <th style={{ padding: '14px 16px' }}>Upload Date & Time</th>
+                  <th style={{ padding: '14px 16px' }}>File Size</th>
+                  <th style={{ padding: '14px 16px' }}>Duration</th>
+                  <th style={{ padding: '14px 16px' }}>Type & Status</th>
+                  <th style={{ padding: '14px 16px' }}>Manifest / Stream Link</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredVideos.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No content uploaded or registered yet.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredVideos.map((v) => (
+                    <tr key={v.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontWeight: 700, color: '#fff' }}>{v.title}</div>
+                        {v.originalFileName && (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                            {v.originalFileName}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <UserCheck size={14} color="var(--primary)" />
+                          <span>{v.ownerDisplayName}</span>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{v.ownerEmail}</div>
+                      </td>
+                      <td style={{ padding: '14px 16px', color: 'var(--text-muted)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Clock size={13} color="var(--text-dim)" />
+                          <span>{new Date(v.createdAt).toLocaleString()}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px', fontWeight: 600 }}>
+                        {v.sourceType === 'UPLOADED' ? formatBytes(v.fileSize) : 'N/A (YouTube)'}
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>{formatDuration(v.duration)}</td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ padding: '3px 8px', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 700, background: v.sourceType === 'YOUTUBE' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(99, 102, 241, 0.15)', color: v.sourceType === 'YOUTUBE' ? '#ef4444' : 'var(--primary)' }}>
+                            {v.sourceType}
+                          </span>
+                          <span style={{ padding: '3px 8px', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 700, background: v.status === 'READY' || v.status === 'PARTIALLY_READY' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)', color: v.status === 'READY' || v.status === 'PARTIALLY_READY' ? 'var(--success)' : 'var(--warning)' }}>
+                            {v.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px' }} className="mono">
+                        {v.manifestUrl ? (
+                          <a href={v.manifestUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem' }}>
+                            <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.manifestUrl}</span>
+                            <ExternalLink size={12} />
+                          </a>
+                        ) : (
+                          <span style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }}>Direct CDN</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Tab 2: All Rooms Details */}
+        {activeTab === 'rooms' && (
+          <div className="glass-panel" style={{ overflowX: 'auto', padding: 0 }}>
+            <table style={{ width: '100%', minWidth: '900px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
+              <thead>
+                <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                  <th style={{ padding: '14px 16px' }}>Room Code & Name</th>
+                  <th style={{ padding: '14px 16px' }}>Host User</th>
+                  <th style={{ padding: '14px 16px' }}>Created Date & Time</th>
+                  <th style={{ padding: '14px 16px' }}>Playing Movie / Video</th>
+                  <th style={{ padding: '14px 16px' }}>Active Participants</th>
+                  <th style={{ padding: '14px 16px' }}>Control Mode & Lock</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRooms.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      No active or past rooms found.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRooms.map((r) => (
+                    <tr key={r.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontWeight: 800, color: 'var(--accent)', fontSize: '1rem' }}>{r.roomCode}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{r.name}</div>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontWeight: 600 }}>{r.hostDisplayName}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.hostEmail}</div>
+                      </td>
+                      <td style={{ padding: '14px 16px', color: 'var(--text-muted)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <Clock size={13} color="var(--text-dim)" />
+                          <span>{new Date(r.createdAt).toLocaleString()}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        {r.currentVideo ? (
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#fff' }}>{r.currentVideo.title}</div>
+                            <span style={{ fontSize: '0.7rem', padding: '1px 6px', borderRadius: '4px', background: r.currentVideo.sourceType === 'YOUTUBE' ? 'rgba(239,68,68,0.15)' : 'rgba(99,102,241,0.15)', color: r.currentVideo.sourceType === 'YOUTUBE' ? '#ef4444' : '#818cf8', fontWeight: 700 }}>
+                              {r.currentVideo.sourceType}
+                            </span>
+                          </div>
+                        ) : (
+                          <span style={{ color: 'var(--text-dim)', fontSize: '0.8rem' }}>No video playing</span>
+                        )}
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                          <span style={{ padding: '2px 8px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 700, background: r.activeParticipantCount > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.06)', color: r.activeParticipantCount > 0 ? '#10b981' : 'var(--text-dim)' }}>
+                            {r.activeParticipantCount} Active / {r.totalParticipantCount} Total
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '240px' }}>
+                          {r.participants.slice(0, 5).map((p) => (
+                            <span key={p.userId} style={{ fontSize: '0.7rem', background: 'rgba(255,255,255,0.05)', color: p.isOnline ? '#fff' : 'var(--text-dim)', padding: '1px 5px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                              {p.displayName} {p.role === 'HOST' ? '👑' : ''}
+                            </span>
+                          ))}
+                          {r.participants.length > 5 && (
+                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>+{r.participants.length - 5} more</span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ padding: '3px 8px', borderRadius: '99px', fontSize: '0.72rem', fontWeight: 700, background: r.controlMode === 'HOST_ONLY' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(16, 185, 129, 0.15)', color: r.controlMode === 'HOST_ONLY' ? 'var(--warning)' : 'var(--success)' }}>
+                            {r.controlMode}
+                          </span>
+                          {r.isLocked ? <span title="Room Locked"><Lock size={14} color="#ef4444" /></span> : <span title="Room Unlocked"><Unlock size={14} color="#10b981" /></span>}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Tab 3: Users Table */}
         {activeTab === 'users' && (
           <div className="glass-panel" style={{ overflowX: 'auto', padding: 0 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
@@ -256,7 +481,7 @@ export const AdminPage: React.FC = () => {
                   <th style={{ padding: '14px 16px' }}>Email</th>
                   <th style={{ padding: '14px 16px' }}>Account Type</th>
                   <th style={{ padding: '14px 16px' }}>Profile Role</th>
-                  <th style={{ padding: '14px 16px' }}>Joined Date</th>
+                  <th style={{ padding: '14px 16px' }}>Joined Date & Time</th>
                   <th style={{ padding: '14px 16px' }}>Actions</th>
                 </tr>
               </thead>
@@ -301,7 +526,7 @@ export const AdminPage: React.FC = () => {
           </div>
         )}
 
-        {/* Tab 2: Watch History Table */}
+        {/* Tab 4: Watch History Table */}
         {activeTab === 'history' && (
           <div className="glass-panel" style={{ overflowX: 'auto', padding: 0 }}>
             <table style={{ width: '100%', minWidth: '600px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
@@ -311,14 +536,14 @@ export const AdminPage: React.FC = () => {
                   <th style={{ padding: '14px 16px' }}>Room Code</th>
                   <th style={{ padding: '14px 16px' }}>Video Title</th>
                   <th style={{ padding: '14px 16px' }}>Source</th>
-                  <th style={{ padding: '14px 16px' }}>Watched At</th>
+                  <th style={{ padding: '14px 16px' }}>Watched At (Date & Time)</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredHistory.length === 0 ? (
                   <tr>
                     <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No watch history records stored in database yet. Join a room and play a video to record history!
+                      No watch history records stored in database yet.
                     </td>
                   </tr>
                 ) : (
@@ -338,63 +563,6 @@ export const AdminPage: React.FC = () => {
                         </span>
                       </td>
                       <td style={{ padding: '14px 16px', color: 'var(--text-muted)' }}>{new Date(h.watchedAt).toLocaleString()}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Tab 3: Video Metadata Table */}
-        {activeTab === 'videos' && (
-          <div className="glass-panel" style={{ overflowX: 'auto', padding: 0 }}>
-            <table style={{ width: '100%', minWidth: '700px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '14px 16px' }}>Video ID</th>
-                  <th style={{ padding: '14px 16px' }}>Title</th>
-                  <th style={{ padding: '14px 16px' }}>Source</th>
-                  <th style={{ padding: '14px 16px' }}>File Size</th>
-                  <th style={{ padding: '14px 16px' }}>Duration</th>
-                  <th style={{ padding: '14px 16px' }}>Status</th>
-                  <th style={{ padding: '14px 16px' }}>Stream Path</th>
-                  <th style={{ padding: '14px 16px' }}>Owner</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredVideos.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No video metadata stored in database yet.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredVideos.map((v) => (
-                    <tr key={v.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '14px 16px' }} className="mono">{v.id}</td>
-                      <td style={{ padding: '14px 16px', fontWeight: 600 }}>{v.title}</td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <span style={{ padding: '3px 8px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 600, background: v.sourceType === 'YOUTUBE' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(99, 102, 241, 0.15)', color: v.sourceType === 'YOUTUBE' ? '#ef4444' : 'var(--primary)' }}>
-                          {v.sourceType}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>{v.sourceType === 'UPLOADED' ? formatBytes(v.fileSize) : 'N/A'}</td>
-                      <td style={{ padding: '14px 16px' }}>{formatDuration(v.duration)}</td>
-                      <td style={{ padding: '14px 16px' }}>
-                        <span style={{ padding: '3px 8px', borderRadius: '99px', fontSize: '0.75rem', fontWeight: 600, background: v.status === 'READY' || v.status === 'PARTIALLY_READY' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)', color: v.status === 'READY' || v.status === 'PARTIALLY_READY' ? 'var(--success)' : 'var(--warning)' }}>
-                          {v.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '14px 16px' }} className="mono">
-                        {v.manifestUrl ? (
-                          <a href={v.manifestUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span>{v.manifestUrl}</span>
-                            <ExternalLink size={12} />
-                          </a>
-                        ) : 'None'}
-                      </td>
-                      <td style={{ padding: '14px 16px' }}>{v.ownerDisplayName}</td>
                     </tr>
                   ))
                 )}

@@ -4,6 +4,8 @@ export interface AdminStats {
   totalVideos: number;
   totalWatchEvents: number;
   totalStorageBytes: number;
+  totalHttpBytesServed?: number;
+  totalHttpRequestsServed?: number;
 }
 
 export interface AdminUser {
@@ -16,6 +18,34 @@ export interface AdminUser {
   createdAt: string;
   roomsCreated: number;
   videosUploaded: number;
+}
+
+export interface AdminRoomParticipant {
+  userId: string;
+  displayName: string;
+  role: string;
+  isOnline: boolean;
+}
+
+export interface AdminRoom {
+  id: string;
+  roomCode: string;
+  name: string;
+  hostId: string;
+  hostDisplayName: string;
+  hostEmail: string;
+  controlMode: string;
+  isLocked: boolean;
+  createdAt: string;
+  expiresAt: string;
+  currentVideo?: {
+    id: string;
+    title: string;
+    sourceType: string;
+  } | null;
+  activeParticipantCount: number;
+  totalParticipantCount: number;
+  participants: AdminRoomParticipant[];
 }
 
 export interface AdminWatchHistoryItem {
@@ -69,6 +99,13 @@ export const adminApi = {
     if (!res.ok) throw new Error('Failed to fetch users');
     const data = await res.json();
     return data.users;
+  },
+
+  async getRooms(): Promise<AdminRoom[]> {
+    const res = await fetch(`${API_BASE}/admin/rooms`, { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch rooms');
+    const data = await res.json();
+    return data.rooms;
   },
 
   async getWatchHistory(): Promise<AdminWatchHistoryItem[]> {

@@ -26,12 +26,17 @@ export async function getAdminStats(req: AuthRequest, res: Response) {
     const videos = await prisma.video.findMany({ select: { fileSize: true } });
     const totalStorageBytes = videos.reduce((acc, v) => acc + (v.fileSize ? Number(v.fileSize) : 0), 0);
 
+    const { getBandwidthStats } = await import('../utils/bandwidthTracker');
+    const bw = getBandwidthStats();
+
     const statsPayload = {
       totalUsers,
       totalRooms,
       totalVideos,
       totalWatchEvents,
       totalStorageBytes,
+      totalHttpBytesServed: bw.totalHttpBytesServed,
+      totalHttpRequestsServed: bw.totalHttpRequestsServed,
       updatedAt: new Date().toISOString(),
     };
 
@@ -42,6 +47,61 @@ export async function getAdminStats(req: AuthRequest, res: Response) {
   } catch (error: any) {
     console.error('Admin stats error:', error);
     return res.status(500).json({ error: 'Failed to fetch admin stats' });
+  }
+}
+
+export async function getAdminRooms(req: AuthRequest, res: Response) {
+  try {
+    const rooms = await prisma.room.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+      include: {
+        host: {
+          select: { id: true, displayName: true, email: true },
+        },
+        currentVideo: {
+          select: { id: true, title: true, sourceType: true, manifestUrl: true, youtubeUrl: true },
+        },
+        participants: {
+          include: {
+            user: {
+              select: { id: true, displayName: true, email: true },
+            },
+          },
+        },
+      },
+    });
+
+    const formattedRooms = rooms.map((r) => ({
+      id: r.id,
+      roomCode: r.roomCode,
+      name: r.name,
+      hostId: r.hostId,
+      hostDisplayName: r.host?.displayName || 'Unknown Host',
+      hostEmail: r.host?.email || 'N/A',
+      controlMode: r.controlMode,
+      isLocked: r.isLocked,
+      createdAt: r.createdAt.toISOString(),
+      expiresAt: r.expiresAt.toISOString(),
+      currentVideo: r.currentVideo ? {
+        id: r.currentVideo.id,
+        title: r.currentVideo.title,
+        sourceType: r.currentVideo.sourceType,
+      } : null,
+      activeParticipantCount: r.participants.filter(p => p.isOnline).length,
+      totalParticipantCount: r.participants.length,
+      participants: r.participants.map((p) => ({
+        userId: p.userId,
+        displayName: p.user?.displayName || 'Guest User',
+        role: p.role,
+        isOnline: p.isOnline,
+      })),
+    }));
+
+    return res.json({ rooms: formattedRooms });
+  } catch (error: any) {
+    console.error('Admin rooms error:', error);
+    return res.status(500).json({ error: 'Failed to fetch rooms details' });
   }
 }
 

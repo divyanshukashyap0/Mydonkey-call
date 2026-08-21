@@ -8,6 +8,7 @@ import webrtcRoutes from './routes/webrtc.routes';
 import uploadRoutes from './routes/upload.routes';
 import socialRoutes from './routes/social.routes';
 import adminRoutes from './routes/admin.routes';
+import { trackResponseBytes } from './utils/bandwidthTracker';
 
 // Global Polyfill for BigInt JSON Serialization
 (BigInt.prototype as any).toJSON = function () {
@@ -73,6 +74,7 @@ app.use((req, res, next) => {
     if (chunk) {
       bytesWritten += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk);
     }
+    trackResponseBytes(bytesWritten);
     const duration = Date.now() - startTime;
     const isBandwidthDebug = process.env.BANDWIDTH_DEBUG === 'true';
 
