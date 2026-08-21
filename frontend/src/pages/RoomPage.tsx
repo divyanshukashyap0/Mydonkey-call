@@ -22,6 +22,7 @@ import { useUploadStore } from '../store/useUploadStore';
 import { useSyncClock } from '../hooks/useSyncClock';
 import { useFullscreen } from '../hooks/useFullscreen';
 import { useSyncEngine } from '../hooks/useSyncEngine';
+import { useToast } from '../components/common/ToastNotification';
 import { connectSocket, getSocket } from '../services/socket';
 import { Tv, Sparkles, Plus, X, Terminal, ChevronLeft, ExternalLink, Minimize2, Users, Copy, UserPlus, Film, MessageSquare, Folder, Bookmark, Settings, Play, Pause, RefreshCw, Lock, Crown } from 'lucide-react';
 
@@ -45,9 +46,11 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
   } = useRoomStore();
 
   const { getAdjustedServerTime } = useSyncClock();
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<'participants' | 'chat'>('chat');
+  const [activeNav, setActiveNav] = useState<'watch' | 'chat' | 'participants' | 'library' | 'bookmarks' | 'settings'>('watch');
   const [isSelectVideoOpen, setIsSelectVideoOpen] = useState(false);
   const [isHostSettingsOpen, setIsHostSettingsOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -461,7 +464,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                 style={{ width: '32px', height: '32px' }}
                 onClick={() => {
                   navigator.clipboard.writeText(currentRoom?.roomCode || '');
-                  alert('Room code copied to clipboard!');
+                  showToast(`Copied room code: ${currentRoom?.roomCode}`, 'success');
                 }}
                 title="Copy Room Code"
               >
@@ -477,7 +480,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
               style={{ width: '100%', fontSize: '0.82rem', padding: '8px 12px', background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' }}
               onClick={() => {
                 navigator.clipboard.writeText(window.location.href);
-                alert('Room link copied to clipboard!');
+                showToast('Watch Party link copied! Share with friends.', 'success');
               }}
             >
               <UserPlus size={14} />
@@ -488,36 +491,59 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
           {/* Navigation Items */}
           <div className="glass-panel" style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
             {[
-              { label: 'Watch Party', icon: Film, active: true },
-              { label: 'Chat', icon: MessageSquare },
-              { label: 'Participants', icon: Users },
-              { label: 'My Library', icon: Folder },
-              { label: 'Bookmarks', icon: Bookmark },
-              { label: 'Settings', icon: Settings },
-            ].map((item) => (
-              <div
-                key={item.label}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '9px 12px',
-                  borderRadius: 'var(--radius-md)',
-                  fontSize: '0.85rem',
-                  fontWeight: 600,
-                  color: item.active ? '#fff' : 'var(--text-muted)',
-                  background: item.active ? 'rgba(229, 9, 20, 0.22)' : 'transparent',
-                  borderLeft: item.active ? '3px solid var(--primary)' : '3px solid transparent',
-                  cursor: 'pointer',
-                }}
-              >
-                <item.icon size={15} color={item.active ? 'var(--primary)' : 'var(--text-muted)'} />
-                <span>{item.label}</span>
-              </div>
-            ))}
+              { id: 'watch', label: 'Watch Party', icon: Film },
+              { id: 'chat', label: 'Chat', icon: MessageSquare },
+              { id: 'participants', label: 'Participants', icon: Users },
+              { id: 'library', label: 'My Library', icon: Folder },
+              { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
+              { id: 'settings', label: 'Settings', icon: Settings },
+            ].map((item) => {
+              const isActive = activeNav === item.id;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => {
+                    setActiveNav(item.id as any);
+                    if (item.id === 'watch') {
+                      stageRef.current?.scrollIntoView({ behavior: 'smooth' });
+                      showToast('Switched to Cinema Watch View', 'info');
+                    } else if (item.id === 'chat') {
+                      setActiveTab('chat');
+                      showToast('Switched to Room Chat', 'info');
+                    } else if (item.id === 'participants') {
+                      setActiveTab('participants');
+                      showToast('Switched to Participants List', 'info');
+                    } else if (item.id === 'library') {
+                      setIsSelectVideoOpen(true);
+                    } else if (item.id === 'bookmarks') {
+                      showToast(`Bookmarked current video: ${currentVideo?.title || 'Watch Room'}`, 'success');
+                    } else if (item.id === 'settings') {
+                      setIsHostSettingsOpen(true);
+                    }
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '9px 12px',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.85rem',
+                    fontWeight: 600,
+                    color: isActive ? '#fff' : 'var(--text-muted)',
+                    background: isActive ? 'rgba(229, 9, 20, 0.22)' : 'transparent',
+                    borderLeft: isActive ? '3px solid var(--primary)' : '3px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <item.icon size={15} color={isActive ? 'var(--primary)' : 'var(--text-muted)'} />
+                  <span>{item.label}</span>
+                </div>
+              );
+            })}
           </div>
 
-          {/* Room Info */}
+          {/* Room Info Card */}
           <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem' }}>
             <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '2px' }}>ROOM INFO</div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -538,6 +564,23 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
               <span style={{ color: 'var(--text-muted)' }}>Expires In</span>
               <strong style={{ color: 'var(--accent)' }}>24h Active</strong>
             </div>
+
+            <button
+              className="btn btn-secondary"
+              style={{ width: '100%', marginTop: '6px', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.3)', fontSize: '0.78rem', padding: '6px' }}
+              onClick={() => {
+                if (currentRoom?.hostId === user?.id) {
+                  setIsHostSettingsOpen(true);
+                } else {
+                  if (confirm('Are you sure you want to leave the watch room?')) {
+                    getSocket().emit('room:leave');
+                    window.location.href = '/';
+                  }
+                }
+              }}
+            >
+              <span>{currentRoom?.hostId === user?.id ? 'End Room Settings' : 'Leave Room'}</span>
+            </button>
           </div>
 
           {/* Connection Health */}
