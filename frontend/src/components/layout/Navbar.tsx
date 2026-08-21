@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Tv, LogOut, User as UserIcon, Plus, DoorOpen, LogIn, Users, History, Shield, Menu, X, Settings, Lock, Unlock } from 'lucide-react';
+import { Tv, LogOut, User as UserIcon, Plus, DoorOpen, LogIn, Users, History, Shield, Menu, X, Settings, Lock, Unlock, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useRoomStore } from '../../store/useRoomStore';
 import { getSocket } from '../../services/socket';
@@ -180,21 +180,74 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
           )}
         </div>
 
-        {/* Mobile Header Right Bar (Screens < 768px) */}
-        <div className="mobile-nav-toggle" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {currentRoom && (
-            <div className="room-code-badge" onClick={() => handleCopyCode(currentRoom.roomCode)} style={{ padding: '4px 10px', fontSize: '0.75rem' }}>
-              <span>{currentRoom.roomCode}</span>
-            </div>
-          )}
+        {/* Mobile Header Right Bar (Screens < 991px) */}
+        <div className="mobile-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <button
             className="btn btn-secondary btn-sm"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            aria-label="Toggle menu"
-            style={{ width: '40px', height: '40px', padding: 0, borderRadius: '10px' }}
+            style={{ padding: '4px 10px', fontSize: '0.78rem', gap: '4px' }}
+            onClick={() => {
+              if (currentRoom) handleCopyCode(currentRoom.roomCode);
+            }}
           >
-            {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            <Users size={14} />
+            <span>Invite</span>
           </button>
+
+          <button
+            className="btn btn-secondary btn-icon"
+            style={{ width: '34px', height: '34px', position: 'relative' }}
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            title="Room Menu & Chat"
+          >
+            <MessageSquare size={16} />
+            <span
+              style={{
+                position: 'absolute',
+                top: '-2px',
+                right: '-2px',
+                background: 'var(--primary)',
+                color: '#fff',
+                fontSize: '0.6rem',
+                fontWeight: 800,
+                width: '14px',
+                height: '14px',
+                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              3
+            </span>
+          </button>
+
+          {user && (
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              {user.avatarUrl ? (
+                <img
+                  src={user.avatarUrl}
+                  alt={user.displayName}
+                  style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1.5px solid var(--border-color)' }}
+                />
+              ) : (
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <UserIcon size={16} color="#fff" />
+                </div>
+              )}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: 0,
+                  right: 0,
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: 'var(--success)',
+                  border: '1.5px solid #000',
+                }}
+              />
+            </div>
+          )}
         </div>
       </nav>
 
@@ -328,10 +381,12 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
         @media (max-width: 991px) {
           .desktop-nav { display: none !important; }
           .mobile-hamburger-btn { display: flex !important; }
+          .mobile-header-actions { display: flex !important; }
         }
         @media (min-width: 992px) {
           .desktop-nav { display: flex !important; }
           .mobile-hamburger-btn { display: none !important; }
+          .mobile-header-actions { display: none !important; }
         }
       `}</style>
 

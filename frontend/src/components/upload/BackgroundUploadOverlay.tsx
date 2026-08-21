@@ -43,12 +43,12 @@ export const BackgroundUploadOverlay: React.FC<BackgroundUploadOverlayProps> = (
 
   return (
     <div
+      className="upload-overlay-card"
       style={{
         position: 'fixed',
-        bottom: '24px',
-        right: '24px',
+        right: '16px',
         zIndex: 9990,
-        width: '360px',
+        width: 'min(92vw, 360px)',
         background: 'rgba(15, 23, 42, 0.92)',
         backdropFilter: 'blur(16px)',
         border: '1px solid rgba(59, 130, 246, 0.3)',

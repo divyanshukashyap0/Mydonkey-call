@@ -446,7 +446,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
       </div>
 
       {/* Top Controls Bar (Ready System + Connection Health + Debug Console) */}
-      <div style={{ padding: '8px 16px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+      <div className="desktop-top-controls" style={{ padding: '8px 16px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
         {currentRoom && user && (
           <ReadySystemBar
             room={currentRoom}
@@ -1105,8 +1105,24 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
             flex: none;
           }
           .webrtc-strip {
-            display: none;
+            display: flex !important;
+            width: 100%;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            padding: 4px 0;
+            gap: 8px;
+            -webkit-overflow-scrolling: touch;
           }
+          .desktop-top-controls {
+            display: none !important;
+          }
+          .mobile-subheader-bar {
+            display: flex !important;
+          }
+        }
+
+        .mobile-subheader-bar {
+          display: none;
         }
 
         /* Tablet Portrait Layout (768px - 1023px) */

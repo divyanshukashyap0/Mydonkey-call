@@ -367,4 +367,14 @@ body {
   }
 }
 
+.upload-overlay-card {
+  bottom: 24px;
+}
+
+@media (max-width: 767px) {
+  .upload-overlay-card {
+    bottom: 74px !important;
+  }
+}
+
 
