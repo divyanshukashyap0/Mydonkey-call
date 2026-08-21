@@ -190,11 +190,12 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
     };
 
     pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === 'failed') {
+      const state = pc.iceConnectionState;
+      if (state === 'failed' || state === 'disconnected') {
         const isPolite = currentUserId ? currentUserId < targetUserId : true;
-        if (!isPolite) return; // Only polite peer initiates automatic ICE restart to prevent dual offer collision
+        if (!isPolite) return;
 
-        console.warn(`⚠️ WebRTC ICE connection failed for peer ${targetUserId}. Triggering ICE restart...`);
+        console.warn(`⚠️ WebRTC ICE connection ${state} for peer ${targetUserId}. Triggering automatic ICE restart...`);
         pc.createOffer({ iceRestart: true })
           .then((offer) => pc.setLocalDescription(offer))
           .then(() => {
