@@ -17,6 +17,7 @@ interface VideoControlBarProps {
   canControl: boolean;
   audioTracks?: AudioTrackItem[];
   selectedAudioTrackId?: number;
+  aspectRatioLabel?: string;
   onSelectAudioTrack?: (trackId: number) => void;
   onPlay: () => void;
   onPause: () => void;
@@ -50,6 +51,7 @@ export const VideoControlBar: React.FC<VideoControlBarProps> = ({
   canControl,
   audioTracks,
   selectedAudioTrackId,
+  aspectRatioLabel,
   onSelectAudioTrack,
   onPlay,
   onPause,
@@ -215,6 +217,13 @@ export const VideoControlBar: React.FC<VideoControlBarProps> = ({
             <Zap size={11} />
             <span>{Math.abs(Math.round(driftMs)) < 5000 ? `Synced (${Math.abs(Math.round(driftMs))}ms)` : 'Out of Sync'}</span>
           </div>
+
+          {/* Aspect Ratio Badge */}
+          {aspectRatioLabel && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.7rem', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.35)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '99px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <span>{aspectRatioLabel}</span>
+            </div>
+          )}
         </div>
 
         {/* Action Controls & Fullscreen */}

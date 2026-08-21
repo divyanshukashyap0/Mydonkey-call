@@ -22,12 +22,34 @@ export interface PlayerController {
   setAudioTrack?: (trackId: number) => void;
 }
 
+export function getAspectRatioLabel(width: number, height: number): { ratio: number; label: string } {
+  if (!width || !height) return { ratio: 16 / 9, label: '16:9 HD' };
+  const ratio = width / height;
+  if (Math.abs(ratio - 2.39) < 0.15 || Math.abs(ratio - 2.40) < 0.15) {
+    return { ratio, label: '2.39:1 Scope' };
+  }
+  if (Math.abs(ratio - 1.85) < 0.08) {
+    return { ratio, label: '1.85:1 Flat' };
+  }
+  if (Math.abs(ratio - 1.43) < 0.1 || Math.abs(ratio - 1.90) < 0.1) {
+    return { ratio, label: 'IMAX 70mm' };
+  }
+  if (Math.abs(ratio - 1.33) < 0.08) {
+    return { ratio, label: '4:3 Academy' };
+  }
+  if (Math.abs(ratio - 1.777) < 0.1) {
+    return { ratio, label: '16:9 HD' };
+  }
+  return { ratio, label: `${ratio.toFixed(2)}:1` };
+}
+
 interface HLSPlayerProps {
   manifestUrl: string;
   onReady?: (videoElement: HTMLVideoElement, controller: PlayerController) => void;
   onTimeUpdate?: (currentTime: number, duration: number) => void;
   onEnded?: () => void;
   onAudioTracksChange?: (tracks: AudioTrackItem[], activeTrackId: number) => void;
+  onVideoDimensionsChange?: (width: number, height: number, aspectRatio: number, ratioLabel: string) => void;
 }
 
 export const HLSPlayer: React.FC<HLSPlayerProps> = ({
@@ -36,6 +58,7 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
   onTimeUpdate,
   onEnded,
   onAudioTracksChange,
+  onVideoDimensionsChange,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -284,6 +307,16 @@ export const HLSPlayer: React.FC<HLSPlayerProps> = ({
         playsInline
         preload="auto"
         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+        onLoadedMetadata={() => {
+          if (videoRef.current && videoRef.current.videoWidth && videoRef.current.videoHeight) {
+            const w = videoRef.current.videoWidth;
+            const h = videoRef.current.videoHeight;
+            const { ratio, label } = getAspectRatioLabel(w, h);
+            if (onVideoDimensionsChange) {
+              onVideoDimensionsChange(w, h, ratio, label);
+            }
+          }
+        }}
         onTimeUpdate={() => {
           if (videoRef.current && onTimeUpdate) {
             onTimeUpdate(videoRef.current.currentTime, videoRef.current.duration || 0);

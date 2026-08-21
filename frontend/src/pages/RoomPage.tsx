@@ -65,6 +65,8 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
   const [driftMs, setDriftMs] = useState(0);
   const [audioTracks, setAudioTracks] = useState<Array<{ id: number; label: string; lang?: string }>>([]);
   const [selectedAudioTrackId, setSelectedAudioTrackId] = useState<number>(0);
+  const [videoAspectRatio, setVideoAspectRatio] = useState<number>(16 / 9);
+  const [aspectRatioLabel, setAspectRatioLabel] = useState<string>('16:9 HD');
   const stageRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, showControls, toggleFullscreen } = useFullscreen(stageRef);
   const isProgrammaticActionRef = useRef(false);
@@ -110,6 +112,8 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
 
     socket.on('video:changed', ({ video, authoritativeState }) => {
       updateCurrentVideo(video as any, authoritativeState);
+      setVideoAspectRatio(16 / 9);
+      setAspectRatioLabel('16:9 HD');
       if (video && roomCode) {
         import('../store/useSocialStore').then(({ useSocialStore }) => {
           useSocialStore.getState().recordHistory({
@@ -469,6 +473,10 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                     setAudioTracks(tracks);
                     setSelectedAudioTrackId(activeId);
                   }}
+                  onVideoDimensionsChange={(_w, _h, ratio, label) => {
+                    setVideoAspectRatio(ratio);
+                    setAspectRatioLabel(label);
+                  }}
                   onEnded={handleVideoEnded}
                 />
               ) : (
@@ -702,6 +710,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                   canControl={canControl}
                   audioTracks={audioTracks}
                   selectedAudioTrackId={selectedAudioTrackId}
+                  aspectRatioLabel={aspectRatioLabel}
                   onSelectAudioTrack={(trackId) => {
                     setSelectedAudioTrackId(trackId);
                     if (playerRef.current && playerRef.current.setAudioTrack) {
