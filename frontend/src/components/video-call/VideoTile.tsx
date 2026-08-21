@@ -189,13 +189,13 @@ export const VideoTile: React.FC<VideoTileProps> = ({
             fontSize: '0.68rem',
             fontWeight: 700,
             color: '#fff',
-            maxWidth: '85px',
+            maxWidth: '100px',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}
         >
-          {isLocal ? 'You' : displayName}
+          {isLocal ? `You (${displayName})` : displayName}
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           {isHost && <span title="Host"><ShieldCheck size={12} color="#fbbf24" /></span>}

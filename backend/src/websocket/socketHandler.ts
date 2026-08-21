@@ -742,8 +742,10 @@ export function setupSocketIO(io: SocketIOServer) {
         const room = await prisma.room.findUnique({ where: { roomCode: socket.currentRoomCode } });
         if (!room || room.hostId !== socket.user.id) return;
 
-        io.to(`room:${socket.currentRoomCode}`).emit('room:ended');
-        console.log(`🚪 Room ${socket.currentRoomCode} ended by host ${socket.user.displayName}`);
+        const roomSocketName = `room:${socket.currentRoomCode}`;
+        io.to(roomSocketName).emit('room:ended');
+        await prisma.room.delete({ where: { id: room.id } }).catch(() => {});
+        console.log(`🚪 Room ${socket.currentRoomCode} closed and purged from DB by host ${socket.user.displayName}`);
       } catch (err) {
         console.error('End Room error:', err);
       }
@@ -901,7 +903,7 @@ export function setupSocketIO(io: SocketIOServer) {
       }
     });
 
-    // Disconnect
+    // Disconnect Handler
     socket.on('disconnect', async () => {
       if (socket.user && socket.currentRoomCode) {
         const roomCode = socket.currentRoomCode;
@@ -910,12 +912,19 @@ export function setupSocketIO(io: SocketIOServer) {
         try {
           const room = await prisma.room.findUnique({ where: { roomCode } });
           if (room) {
-            await prisma.roomParticipant.updateMany({
-              where: { roomId: room.id, userId: socket.user.id },
-              data: { isOnline: false },
-            });
-
-            socket.to(roomSocketName).emit('room:user-left', { userId: socket.user.id });
+            if (room.hostId === socket.user.id) {
+              // Host disconnected: end and delete the room for everyone
+              io.to(roomSocketName).emit('room:ended');
+              await prisma.room.delete({ where: { id: room.id } }).catch(() => {});
+              console.log(`🚪 Room ${roomCode} deleted from DB because host ${socket.user.displayName} disconnected.`);
+            } else {
+              // Normal participant disconnected
+              await prisma.roomParticipant.updateMany({
+                where: { roomId: room.id, userId: socket.user.id },
+                data: { isOnline: false },
+              });
+              socket.to(roomSocketName).emit('room:user-left', { userId: socket.user.id });
+            }
           }
         } catch (err) {
           console.error('Socket disconnect error:', err);
@@ -923,6 +932,7 @@ export function setupSocketIO(io: SocketIOServer) {
       }
     });
 
+    // Explicit Leave Handler
     socket.on('room:leave', async () => {
       if (socket.user && socket.currentRoomCode) {
         const roomCode = socket.currentRoomCode;
@@ -932,11 +942,19 @@ export function setupSocketIO(io: SocketIOServer) {
         try {
           const room = await prisma.room.findUnique({ where: { roomCode } });
           if (room) {
-            await prisma.roomParticipant.updateMany({
-              where: { roomId: room.id, userId: socket.user.id },
-              data: { isOnline: false },
-            });
-            socket.to(roomSocketName).emit('room:user-left', { userId: socket.user.id });
+            if (room.hostId === socket.user.id) {
+              // Host left: end and delete the room for everyone
+              io.to(roomSocketName).emit('room:ended');
+              await prisma.room.delete({ where: { id: room.id } }).catch(() => {});
+              console.log(`🚪 Room ${roomCode} deleted from DB because host ${socket.user.displayName} left.`);
+            } else {
+              // Normal participant left
+              await prisma.roomParticipant.updateMany({
+                where: { roomId: room.id, userId: socket.user.id },
+                data: { isOnline: false },
+              });
+              socket.to(roomSocketName).emit('room:user-left', { userId: socket.user.id });
+            }
           }
         } catch (err) {
           console.error('Socket room:leave error:', err);
