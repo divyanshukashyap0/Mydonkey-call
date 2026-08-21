@@ -74,8 +74,8 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
   const { isFullscreen, showControls, toggleFullscreen } = useFullscreen(stageRef);
   const isProgrammaticActionRef = useRef(false);
 
-  const canControl =
-    currentRoom?.controlMode === 'EVERYONE' || currentRoom?.hostId === user?.id;
+  const isHost = currentRoom?.hostId === user?.id;
+  const canControl = currentRoom?.controlMode === 'EVERYONE' || isHost;
 
   // Connect Sockets
   useEffect(() => {
@@ -951,8 +951,8 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
             )}
           </div>
 
-          {/* Host Quick Controls Panel */}
-          {canControl && (
+          {/* Host Quick Controls Panel - Visible to HOST ONLY */}
+          {isHost && (
             <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
               <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Crown size={12} color="var(--warning)" />
