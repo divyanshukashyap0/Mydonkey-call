@@ -521,8 +521,11 @@ export function setupSocketIO(io: SocketIOServer) {
             return;
           }
           if (video.status === 'UPLOADING') {
-            socket.emit('error:message', { message: 'Video is still uploading. Please wait for upload to complete before playing in room.' });
-            return;
+            const uploadSession = await prisma.upload.findFirst({ where: { videoId: video.id } });
+            if (!uploadSession || uploadSession.completedChunks < 3) {
+              socket.emit('error:message', { message: 'Buffering initial stream... Please wait a few seconds for initial chunks to upload.' });
+              return;
+            }
           }
         } else if (youtubeUrl) {
           const ytId = extractYouTubeId(youtubeUrl);

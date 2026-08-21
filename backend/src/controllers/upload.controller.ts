@@ -187,6 +187,18 @@ export async function uploadChunk(req: AuthRequest, res: Response) {
       // Progressively write uploaded chunk bytes to combined.mp4
       await appendChunkToCombinedFile(upload.id, upload.videoId, index, upload.chunkSize);
 
+      // Mark video as READY as soon as initial stream buffer (>= 3 chunks / 30MB) is ready for instant playback
+      if (completedCount >= 3) {
+        const videoRecord = await prisma.video.findUnique({ where: { id: upload.videoId } });
+        if (videoRecord && videoRecord.status === 'UPLOADING') {
+          const updatedVideo = await prisma.video.update({
+            where: { id: upload.videoId },
+            data: { status: 'READY' },
+          });
+          syncVideoMetadataToFirestore(updatedVideo).catch(() => {});
+        }
+      }
+
       // If all chunks uploaded, trigger combined assembly & background video processing
       if (completedCount === upload.totalChunks) {
         await prisma.upload.update({ where: { id: upload.id }, data: { status: 'PROCESSING' } });
@@ -383,7 +395,20 @@ export async function streamVideoFile(req: Request, res: Response) {
         if (range) {
           const parts = range.replace(/bytes=/, '').split('-');
           const start = parseInt(parts[0], 10);
-          const end = parts[1] ? parseInt(parts[1], 10) : (fileSize > 0 ? fileSize - 1 : 0);
+          let end = parts[1] ? parseInt(parts[1], 10) : (fileSize > 0 ? fileSize - 1 : 0);
+          if (end >= fileSize && fileSize > 0) {
+            end = fileSize - 1;
+          }
+          if (start > end) {
+            res.status(206);
+            res.set({
+              'Content-Range': `bytes 0-0/${fileSize}`,
+              'Accept-Ranges': 'bytes',
+              'Content-Length': '0',
+              'Content-Type': 'video/mp4',
+            });
+            return res.end();
+          }
           const chunkSize = Math.max(0, end - start + 1);
           const file = fs.createReadStream(combinedPath, { start, end });
 
@@ -393,7 +418,7 @@ export async function streamVideoFile(req: Request, res: Response) {
             'Accept-Ranges': 'bytes',
             'Content-Length': chunkSize.toString(),
             'Content-Type': 'video/mp4',
-            'Cache-Control': 'public, max-age=3600',
+            'Cache-Control': 'no-cache',
           });
           return file.pipe(res);
         } else {

@@ -22,13 +22,16 @@ export class ResumableUploader {
   private isPaused: boolean = false;
   private startTime: number = 0;
   private uploadedBytesSnapshot: number = 0;
+  private hasTriggeredEarlyReady: boolean = false;
   private duration: number | null = null;
   private onProgress: (progress: UploadProgress) => void;
+  private onEarlyReady?: (videoId: string) => void;
 
-  constructor(file: File, onProgress: (progress: UploadProgress) => void, duration?: number | null) {
+  constructor(file: File, onProgress: (progress: UploadProgress) => void, onEarlyReady?: (videoId: string) => void, duration?: number | null) {
     this.file = file;
     this.duration = duration || null;
     this.onProgress = onProgress;
+    this.onEarlyReady = onEarlyReady;
     this.totalChunks = Math.ceil(this.file.size / this.chunkSize);
   }
 
@@ -128,6 +131,13 @@ export class ResumableUploader {
           this.completedChunks.add(index);
           this.chunkProgressMap.set(index, chunkBlob.size);
           this.emitProgress('UPLOADING');
+
+          if (this.completedChunks.size >= 3 && !this.hasTriggeredEarlyReady && this.videoId) {
+            this.hasTriggeredEarlyReady = true;
+            if (this.onEarlyReady) {
+              this.onEarlyReady(this.videoId);
+            }
+          }
           resolve(true);
         } else {
           this.chunkProgressMap.set(index, 0);

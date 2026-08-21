@@ -134,10 +134,16 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
           </div>
 
           {/* Streaming Notification Banner */}
-          {progress.status === 'UPLOADING' && (
+          {progress.status === 'UPLOADING' && progress.currentChunk >= 3 && (
+            <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#6ee7b7', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Play size={16} color="var(--success)" />
+              <span><strong>Video stream live in room!</strong> Movie plays automatically while remaining chunks upload.</span>
+            </div>
+          )}
+          {progress.status === 'UPLOADING' && progress.currentChunk < 3 && (
             <div style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#93c5fd', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <UploadCloud size={16} color="var(--accent)" />
-              <span><strong>Uploading movie file...</strong> Movie will play automatically in room once upload completes.</span>
+              <span><strong>Buffering initial stream ({progress.currentChunk}/3 chunks)...</strong> Playback starting in room shortly!</span>
             </div>
           )}
           {progress.status === 'COMPLETED' && (
@@ -163,9 +169,16 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
                   <Pause size={16} />
                   <span>Pause</span>
                 </button>
-                <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>
-                  <span>Background</span>
-                </button>
+                {progress.currentChunk >= 3 ? (
+                  <button className="btn btn-primary" style={{ flex: 1.5 }} onClick={onClose}>
+                    <Play size={16} />
+                    <span>Watch Movie Now</span>
+                  </button>
+                ) : (
+                  <button className="btn btn-secondary" style={{ flex: 1 }} onClick={onClose}>
+                    <span>Background</span>
+                  </button>
+                )}
               </>
             )}
             {progress.status === 'PAUSED' && (

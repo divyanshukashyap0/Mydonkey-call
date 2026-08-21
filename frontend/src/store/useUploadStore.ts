@@ -70,6 +70,9 @@ export const useUploadStore = create<UploadStoreState>((set, get) => ({
             progress: p,
             fileName: file.name,
           });
+        },
+        (earlyVideoId) => {
+          socket.emit('video:change', { videoId: earlyVideoId });
         }
       );
 
