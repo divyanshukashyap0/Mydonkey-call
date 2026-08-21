@@ -240,7 +240,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterRoom }) => {
               </div>
               <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '8px' }}>Cloud Security & Roles</h3>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                Firebase Cloud Firestore authentication, role verification, and full admin dashboard inspection tools.
+                Firebase Cloud Firestore authentication
               </p>
             </motion.div>
           </motion.div>
@@ -292,7 +292,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onEnterRoom }) => {
               <a href="/history" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>History</a>
               <a href="/friends" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Friends</a>
               <a href="/profile" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Profile</a>
-              <a href="/admin" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Admin Dashboard</a>
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#10b981', fontWeight: 600 }}>
