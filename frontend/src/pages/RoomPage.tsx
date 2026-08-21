@@ -688,47 +688,51 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* Video Control Bar */}
-            {currentVideo && (
-              <div
-                style={{
-                  opacity: isFullscreen && !showControls ? 0 : 1,
-                  pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
-                  transition: 'opacity 0.3s ease-in-out',
-                  width: '100%',
-                }}
-              >
-                <VideoControlBar
-                  playbackState={authoritativePlayback?.state || 'PAUSED'}
-                  currentTime={currentTime}
-                  duration={duration}
-                  playbackRate={authoritativePlayback?.playbackRate || 1.0}
-                  isMuted={isMuted}
-                  driftMs={driftMs}
-                  canControl={canControl}
-                  audioTracks={audioTracks}
-                  selectedAudioTrackId={selectedAudioTrackId}
-                  aspectRatioLabel={aspectRatioLabel}
-                  onSelectAudioTrack={(trackId) => {
-                    setSelectedAudioTrackId(trackId);
-                    if (playerRef.current && playerRef.current.setAudioTrack) {
-                      playerRef.current.setAudioTrack(trackId);
-                    }
+              {/* Floating Over-Video Control Bar */}
+              {currentVideo && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '16px',
+                    left: '16px',
+                    right: '16px',
+                    zIndex: 30,
+                    opacity: isFullscreen && !showControls ? 0 : 1,
+                    pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
+                    transition: 'opacity 0.3s ease-in-out',
                   }}
-                  onPlay={handleUserPlay}
-                  onPause={handleUserPause}
-                  onSeek={handleUserSeek}
-                  onRateChange={handleRateChange}
-                  onToggleMute={toggleMute}
-                  onToggleFullscreen={toggleFullscreen}
-                  onManualSync={handleManualSync}
-                  onToggleFloatingChat={() => setShowFloatingChat(!showFloatingChat)}
-                  onToggleFloatingParticipants={() => setShowFloatingParticipants(!showFloatingParticipants)}
-                />
-              </div>
-            )}
+                >
+                  <VideoControlBar
+                    playbackState={authoritativePlayback?.state || 'PAUSED'}
+                    currentTime={currentTime}
+                    duration={duration}
+                    playbackRate={authoritativePlayback?.playbackRate || 1.0}
+                    isMuted={isMuted}
+                    driftMs={driftMs}
+                    canControl={canControl}
+                    audioTracks={audioTracks}
+                    selectedAudioTrackId={selectedAudioTrackId}
+                    aspectRatioLabel={aspectRatioLabel}
+                    onSelectAudioTrack={(trackId) => {
+                      setSelectedAudioTrackId(trackId);
+                      if (playerRef.current && playerRef.current.setAudioTrack) {
+                        playerRef.current.setAudioTrack(trackId);
+                      }
+                    }}
+                    onPlay={handleUserPlay}
+                    onPause={handleUserPause}
+                    onSeek={handleUserSeek}
+                    onRateChange={handleRateChange}
+                    onToggleMute={toggleMute}
+                    onToggleFullscreen={toggleFullscreen}
+                    onManualSync={handleManualSync}
+                    onToggleFloatingChat={() => setShowFloatingChat(!showFloatingChat)}
+                    onToggleFloatingParticipants={() => setShowFloatingParticipants(!showFloatingParticipants)}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* WebRTC Bottom Strip (Visible in Normal Layout) */}
@@ -795,8 +799,8 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
           flex-direction: column;
           position: relative;
           overflow: hidden;
-          padding: 8px;
-          gap: 8px;
+          padding: 0;
+          gap: 0;
           min-height: 240px;
         }
 

@@ -93,9 +93,12 @@ export const VideoControlBar: React.FC<VideoControlBarProps> = ({
         display: 'flex',
         flexDirection: 'column',
         gap: '8px',
-        background: 'rgba(10, 13, 20, 0.88)',
-        borderColor: 'var(--border-color)',
-        borderRadius: 'var(--radius-md)',
+        background: 'rgba(15, 23, 42, 0.82)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255, 255, 255, 0.15)',
+        borderRadius: '16px',
+        boxShadow: '0 12px 36px rgba(0, 0, 0, 0.65)',
         width: '100%',
       }}
     >
