@@ -353,6 +353,20 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
     }
   };
 
+  const handleVideoEnded = () => {
+    console.log('🔄 Video completed - Auto-replaying from 00:00 across all room devices');
+    if (playerRef.current) {
+      if (playerRef.current.seekTo) playerRef.current.seekTo(0);
+      if (playerRef.current.playVideo) playerRef.current.playVideo();
+    }
+    const socket = getSocket();
+    socket.emit('playback:command', {
+      action: 'PLAY',
+      position: 0.0,
+      rate: authoritativePlayback?.playbackRate || 1.0,
+    });
+  };
+
   const handleSelectYouTube = (youtubeUrl: string) => {
     const socket = getSocket();
     socket.emit('video:change', { youtubeUrl });
@@ -443,6 +457,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                   onReady={(player) => {
                     playerRef.current = player;
                   }}
+                  onEnded={handleVideoEnded}
                 />
               ) : currentVideo?.sourceType === 'UPLOADED' && currentVideo.manifestUrl ? (
                 <HLSPlayer
@@ -454,6 +469,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                     setAudioTracks(tracks);
                     setSelectedAudioTrackId(activeId);
                   }}
+                  onEnded={handleVideoEnded}
                 />
               ) : (
                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', background: 'rgba(0,0,0,0.5)', padding: '24px', textAlign: 'center' }}>

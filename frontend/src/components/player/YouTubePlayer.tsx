@@ -12,12 +12,14 @@ interface YouTubePlayerProps {
   onReady?: (player: any) => void;
   onStateChange?: (state: number, currentTime: number) => void;
   onUserSeek?: (currentTime: number) => void;
+  onEnded?: () => void;
 }
 
 export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   videoId,
   onReady,
   onStateChange,
+  onEnded,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
@@ -50,9 +52,12 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
             }
           },
           onStateChange: (event: any) => {
-            if (isMounted && onStateChange && playerRef.current) {
+            if (isMounted && playerRef.current) {
               const currentTime = playerRef.current.getCurrentTime() || 0;
-              onStateChange(event.data, currentTime);
+              if (onStateChange) onStateChange(event.data, currentTime);
+              if (event.data === 0 && onEnded) {
+                onEnded();
+              }
             }
           },
         },
