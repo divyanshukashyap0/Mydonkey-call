@@ -364,7 +364,7 @@ export const AdminPage: React.FC = () => {
                 {filteredVideos.length === 0 ? (
                   <tr>
                     <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      Admin dashboard details are on the wa
+                      Admin dashboard details are on the way....
                     </td>
                   </tr>
                 ) : (

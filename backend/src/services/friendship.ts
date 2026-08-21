@@ -95,16 +95,68 @@ export async function respondToFriendRequest(recipientUid: string, recipientName
 }
 
 export async function getUserFriends(uid: string): Promise<FriendProfile[]> {
-  if (!isFirebaseAdminInitialized) return [];
+  const friendsMap = new Map<string, FriendProfile>();
 
+  // 1. Fetch past room companions from Prisma DB
   try {
-    const db = getFirestore();
-    const snapshot = await db.collection('users').doc(uid).collection('friends').get();
-    return snapshot.docs.map((doc) => doc.data() as FriendProfile);
-  } catch (error: any) {
-    console.error('Get user friends error:', error.message);
-    return [];
+    const userRooms = await prisma.roomParticipant.findMany({
+      where: { userId: uid },
+      select: { roomId: true },
+    });
+
+    const roomIds = userRooms.map((r) => r.roomId);
+
+    if (roomIds.length > 0) {
+      const roomCompanions = await prisma.roomParticipant.findMany({
+        where: {
+          roomId: { in: roomIds },
+          userId: { not: uid },
+        },
+        include: {
+          user: {
+            select: { id: true, displayName: true, email: true, avatarUrl: true, isGuest: true },
+          },
+          room: {
+            select: { roomCode: true, name: true, createdAt: true },
+          },
+        },
+        orderBy: { joinedAt: 'desc' },
+        take: 100,
+      });
+
+      for (const comp of roomCompanions) {
+        if (comp.user && !friendsMap.has(comp.userId)) {
+          friendsMap.set(comp.userId, {
+            friendUid: comp.user.id,
+            friendDisplayName: comp.user.displayName || 'Room Member',
+            friendEmail: comp.user.email || (comp.user.isGuest ? `Room companion in #${comp.room.roomCode}` : `Shared Room #${comp.room.roomCode}`),
+            friendPhotoURL: comp.user.avatarUrl || null,
+            addedAt: comp.joinedAt ? comp.joinedAt.toISOString() : new Date().toISOString(),
+          });
+        }
+      }
+    }
+  } catch (err: any) {
+    console.warn('Prisma room companions fetch notice:', err.message);
   }
+
+  // 2. Fetch explicit friends from Firestore if initialized
+  if (isFirebaseAdminInitialized) {
+    try {
+      const db = getFirestore();
+      const snapshot = await db.collection('users').doc(uid).collection('friends').get();
+      snapshot.docs.forEach((doc) => {
+        const data = doc.data() as FriendProfile;
+        if (data && data.friendUid) {
+          friendsMap.set(data.friendUid, data);
+        }
+      });
+    } catch (error: any) {
+      console.error('Get user friends error:', error.message);
+    }
+  }
+
+  return Array.from(friendsMap.values());
 }
 
 export async function getPendingFriendRequests(uid: string): Promise<FriendRequest[]> {
