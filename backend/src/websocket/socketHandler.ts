@@ -57,7 +57,14 @@ export function serializeVideo(video: any) {
   };
 }
 
+let globalIO: SocketIOServer | null = null;
+
+export function getIO(): SocketIOServer | null {
+  return globalIO;
+}
+
 export function setupSocketIO(io: SocketIOServer) {
+  globalIO = io;
   io.use(async (socket: AuthenticatedSocket, next) => {
     const token = socket.handshake.auth?.token || socket.handshake.headers?.authorization?.replace('Bearer ', '');
     if (!token) {

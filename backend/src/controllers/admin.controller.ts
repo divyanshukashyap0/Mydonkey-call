@@ -252,3 +252,36 @@ export async function getAdminVideos(req: AuthRequest, res: Response) {
     return res.status(500).json({ error: 'Failed to fetch video metadata' });
   }
 }
+
+export async function deleteAdminRoom(req: AuthRequest, res: Response) {
+  try {
+    const { roomId } = req.params;
+    if (!roomId) {
+      return res.status(400).json({ error: 'roomId is required' });
+    }
+
+    const room = await prisma.room.findUnique({ where: { id: roomId } });
+    if (!room) {
+      return res.status(404).json({ error: 'Room not found' });
+    }
+
+    // Emit room:ended via Socket.IO to connected participants
+    try {
+      const { getIO } = await import('../websocket/socketHandler');
+      const io = getIO();
+      if (io) {
+        io.to(`room:${room.roomCode}`).emit('room:ended');
+      }
+    } catch {
+      // Ignore socket emit error
+    }
+
+    await prisma.room.delete({ where: { id: roomId } });
+    console.log(`🛡️ Admin deleted & expired room ${room.roomCode} (${room.name})`);
+
+    return res.json({ success: true, message: `Room ${room.roomCode} expired and deleted successfully` });
+  } catch (error: any) {
+    console.error('Delete admin room error:', error);
+    return res.status(500).json({ error: 'Failed to delete/expire room' });
+  }
+}

@@ -114,6 +114,18 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  const handleDeleteRoom = async (roomId: string, roomCode: string) => {
+    if (window.confirm(`Are you sure you want to expire and delete room ${roomCode}? Connected participants will be disconnected.`)) {
+      try {
+        await adminApi.deleteRoom(roomId);
+        setRooms((prev) => prev.filter((r) => r.id !== roomId));
+        showToast(`Room ${roomCode} has been expired & deleted.`, 'info');
+      } catch (err: any) {
+        showToast(`Failed to delete room: ${err.message}`, 'error');
+      }
+    }
+  };
+
   const filteredUsers = users.filter(
     (u) =>
       u.displayName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -352,7 +364,7 @@ export const AdminPage: React.FC = () => {
                 {filteredVideos.length === 0 ? (
                   <tr>
                     <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No content uploaded or registered yet.
+                      Admin dashboard details are on the wa
                     </td>
                   </tr>
                 ) : (
@@ -419,16 +431,17 @@ export const AdminPage: React.FC = () => {
                 <tr style={{ background: 'rgba(255,255,255,0.03)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
                   <th style={{ padding: '14px 16px' }}>Room Code & Name</th>
                   <th style={{ padding: '14px 16px' }}>Host User</th>
-                  <th style={{ padding: '14px 16px' }}>Created Date & Time</th>
+                  <th style={{ padding: '14px 16px' }}>Creation & Expire Date/Time</th>
                   <th style={{ padding: '14px 16px' }}>Playing Movie / Video</th>
                   <th style={{ padding: '14px 16px' }}>Active Participants</th>
-                  <th style={{ padding: '14px 16px' }}>Control Mode & Lock</th>
+                  <th style={{ padding: '14px 16px' }}>Control & Lock</th>
+                  <th style={{ padding: '14px 16px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRooms.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <td colSpan={7} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
                       No active or past rooms found.
                     </td>
                   </tr>
@@ -444,9 +457,15 @@ export const AdminPage: React.FC = () => {
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.hostEmail}</div>
                       </td>
                       <td style={{ padding: '14px 16px', color: 'var(--text-muted)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Clock size={13} color="var(--text-dim)" />
-                          <span>{new Date(r.createdAt).toLocaleString()}</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.78rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <Clock size={12} color="#10b981" />
+                            <span>Created: <strong>{new Date(r.createdAt).toLocaleString()}</strong></span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            <Clock size={12} color="#ef4444" />
+                            <span>Expires: <strong>{new Date(r.expiresAt).toLocaleString()}</strong></span>
+                          </div>
                         </div>
                       </td>
                       <td style={{ padding: '14px 16px' }}>
@@ -485,6 +504,21 @@ export const AdminPage: React.FC = () => {
                           </span>
                           {r.isLocked ? <span title="Room Locked"><Lock size={14} color="#ef4444" /></span> : <span title="Room Unlocked"><Unlock size={14} color="#10b981" /></span>}
                         </div>
+                      </td>
+                      <td style={{ padding: '14px 16px' }}>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleDeleteRoom(r.id, r.roomCode)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: '#ef4444',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            fontSize: '0.75rem',
+                            padding: '4px 10px',
+                          }}
+                        >
+                          Expire & Delete
+                        </button>
                       </td>
                     </tr>
                   ))

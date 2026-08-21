@@ -122,6 +122,14 @@ export const adminApi = {
     return data.videos;
   },
 
+  async deleteRoom(roomId: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/admin/rooms/${roomId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to expire/delete room');
+  },
+
   async updateUserRole(userId: string, role: 'admin' | 'user'): Promise<void> {
     const res = await fetch(`${API_BASE}/admin/users/${userId}/role`, {
       method: 'PUT',

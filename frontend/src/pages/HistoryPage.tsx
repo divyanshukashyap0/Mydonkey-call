@@ -64,8 +64,8 @@ export const HistoryPage: React.FC = () => {
                     )}
                     <div style={{ minWidth: 0 }}>
                       <h3 style={{ fontSize: '0.95rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.videoTitle}</h3>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
-                        Room: <code className="mono">{item.roomCode}</code> • {new Date(item.watchedAt).toLocaleDateString()}
+                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>
+                        Room: <code className="mono" style={{ color: 'var(--accent)', fontWeight: 700 }}>{item.roomCode}</code> • Played At: <strong>{new Date(item.watchedAt).toLocaleString()}</strong>
                       </span>
                     </div>
                   </div>
