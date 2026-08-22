@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useP2PVideo } from '../../context/P2PVideoContext';
 import { PlayerController, getAspectRatioLabel } from './HLSPlayer';
-import { ShieldAlert, Radio, RefreshCw, WifiOff } from 'lucide-react';
+import { ShieldAlert, Radio, RefreshCw, WifiOff, UploadCloud } from 'lucide-react';
 
 interface P2PVideoPlayerProps {
   isHost: boolean;
@@ -20,16 +20,13 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
   onEnded,
   onVideoDimensionsChange,
 }) => {
-  const { localVideoObjectUrl, p2pStatus, p2pError, requestChunk, peerVideoMetadata, peerCount, reconnectP2P } = useP2PVideo();
+  const { localVideoObjectUrl, setLocalVideoFile, p2pStatus, p2pError, requestChunk, peerVideoMetadata, peerCount, reconnectP2P } = useP2PVideo();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [bufferProgress, setBufferProgress] = useState(0);
   const [isBuffering, setIsBuffering] = useState(false);
 
-  const mediaSourceRef = useRef<MediaSource | null>(null);
-  const sourceBufferRef = useRef<SourceBuffer | null>(null);
   const currentObjectUrlRef = useRef<string | null>(null);
-  const isFetchingChunksRef = useRef(false);
 
   // Host: Play directly from local file ObjectURL
   useEffect(() => {
@@ -37,7 +34,6 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
       setStreamUrl(localVideoObjectUrl);
     }
   }, [isHost, localVideoObjectUrl]);
-
 
   // Peer Viewer: Receive progressive P2P video stream over WebRTC DataChannel
   useEffect(() => {
@@ -65,9 +61,23 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
       for (let i = 0; i < totalChunks && !cancel; i++) {
         const start = i * CHUNK_SIZE;
         const end = Math.min(fileSize, (i + 1) * CHUNK_SIZE);
-        const chunkData = await requestChunk(start, end);
 
-        if (!chunkData || cancel || !isMounted) break;
+        let chunkData: ArrayBuffer | null = null;
+        let attempts = 0;
+
+        // Try requesting chunk up to 3 times with short retry backoff
+        while (attempts < 3 && !chunkData && !cancel && isMounted) {
+          attempts++;
+          chunkData = await requestChunk(start, end);
+          if (!chunkData && attempts < 3 && !cancel && isMounted) {
+            await new Promise((r) => setTimeout(r, 400));
+          }
+        }
+
+        if (!chunkData || cancel || !isMounted) {
+          console.warn(`[P2PVideoPlayer] Failed to retrieve chunk index ${i} after 3 attempts.`);
+          break;
+        }
 
         buffers.push(chunkData);
         fetchedBytes += chunkData.byteLength;
@@ -117,7 +127,6 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
       cancel = true;
     };
   }, [isHost, peerVideoMetadata]);
-
 
   // Auto-play stream on viewer device once streamUrl updates
   useEffect(() => {
@@ -181,11 +190,33 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
       <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.75rem' }}>
         <Radio size={14} color={p2pStatus === 'connected' || isHost ? 'var(--success)' : p2pStatus === 'error' ? 'var(--danger)' : 'var(--warning)'} className={p2pStatus === 'connecting' ? 'spin' : ''} />
         <span style={{ color: '#fff', fontWeight: 600 }}>
-          {isHost ? `P2P Provider (Sharing with ${peerCount} peers)` : p2pStatus === 'connected' ? 'P2P Direct Stream' : p2pStatus === 'connecting' ? `P2P Buffering (${bufferProgress}%)` : p2pStatus === 'error' ? 'P2P Connection Error' : 'P2P Standing By'}
+          {isHost ? `P2P Provider (Sharing with ${peerCount} peers)` : p2pStatus === 'connected' ? `P2P Direct Stream (${bufferProgress}%)` : p2pStatus === 'connecting' ? `P2P Buffering (${bufferProgress}%)` : p2pStatus === 'error' ? 'P2P Connection Error' : 'P2P Standing By'}
         </span>
       </div>
 
-      {p2pError ? (
+      {isHost && !localVideoObjectUrl ? (
+        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', background: 'rgba(99, 102, 241, 0.05)' }}>
+          <UploadCloud size={48} color="var(--primary)" style={{ marginBottom: '12px' }} />
+          <h4 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '6px' }}>Host Stream Re-attachment Required</h4>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '420px', marginBottom: '16px' }}>
+            {videoTitle ? `Re-select "${videoTitle}"` : 'Select movie file'} from your local device to broadcast direct P2P video stream to room participants.
+          </p>
+          <label className="btn btn-primary" style={{ cursor: 'pointer', gap: '8px' }}>
+            <UploadCloud size={16} />
+            <span>Re-attach Local Video File</span>
+            <input
+              type="file"
+              accept="video/*"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                if (e.target.files && e.target.files[0]) {
+                  setLocalVideoFile(e.target.files[0]);
+                }
+              }}
+            />
+          </label>
+        </div>
+      ) : p2pError ? (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
           <ShieldAlert size={40} color="var(--danger)" style={{ marginBottom: '12px' }} />
           <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fca5a5', marginBottom: '6px' }}>P2P Direct Video Connection Failed</h4>
@@ -195,24 +226,21 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
             <span>Reconnect P2P Stream</span>
           </button>
         </div>
-      ) : !isHost && p2pStatus === 'connecting' && !streamUrl ? (
+      ) : !isHost && (!streamUrl || isBuffering) && p2pStatus !== 'error' ? (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
           <RefreshCw size={36} color="var(--primary)" className="spin" style={{ marginBottom: '12px' }} />
-          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '4px' }}>Establishing P2P DataChannel Connection...</h4>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Requesting video stream directly from host browser ({bufferProgress}% ready)</p>
-        </div>
-      ) : !isHost && p2pStatus === 'disconnected' ? (
-        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
-          <WifiOff size={40} color="var(--warning)" style={{ marginBottom: '12px' }} />
-          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--warning)', marginBottom: '6px' }}>Video Host Stream Standing By</h4>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '400px', marginBottom: '16px' }}>Waiting for host to share video stream or tap below to connect directly.</p>
-          <button className="btn btn-primary btn-sm" onClick={reconnectP2P} style={{ gap: '6px' }}>
+          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '4px' }}>
+            {p2pStatus === 'connected' ? 'Buffering P2P Movie Stream...' : 'Connecting to Host P2P Stream...'}
+          </h4>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '400px', marginBottom: '16px' }}>
+            Receiving video stream directly from room host ({bufferProgress}% ready)
+          </p>
+          <button className="btn btn-secondary btn-sm" onClick={reconnectP2P} style={{ gap: '6px' }}>
             <RefreshCw size={14} />
-            <span>Connect / Reconnect P2P Stream</span>
+            <span>Retry Connection</span>
           </button>
         </div>
       ) : (
-
         <video
           ref={videoRef}
           src={streamUrl || undefined}
@@ -241,8 +269,8 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
             }
           }}
         />
-
       )}
     </div>
   );
 };
+

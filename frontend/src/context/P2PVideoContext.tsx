@@ -36,7 +36,12 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
   const pcsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const dataChannelsRef = useRef<Map<string, RTCDataChannel>>(new Map());
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
-  const iceServersRef = useRef<RTCIceServer[]>([{ urls: 'stun:stun.l.google.com:19302' }]);
+  const iceServersRef = useRef<RTCIceServer[]>([
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+    { urls: 'stun:stun.services.mozilla.com:3478' },
+  ]);
 
   const chunkResolversRef = useRef<Map<string, (data: ArrayBuffer) => void>>(new Map());
 
@@ -61,6 +66,23 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
       setP2pStatus('provider_ready');
       setP2pError(null);
 
+      // Re-send metadata over any active open data channels to connected viewers immediately
+      dataChannelsRef.current.forEach((ch, peerId) => {
+        if (ch.readyState === 'open') {
+          try {
+            ch.send(JSON.stringify({
+              type: 'metadata',
+              fileSize: file.size,
+              mimeType: file.type || 'video/mp4',
+              fileName: file.name,
+            }));
+            console.log(`[MovieTransfer] Sent updated video metadata to connected viewer ${peerId}`);
+          } catch (e) {
+            console.warn(`[MovieTransfer] Error sending metadata to viewer ${peerId}:`, e);
+          }
+        }
+      });
+
       const socket = getSocket();
       socket.emit('p2p-video:provider-ready', { videoId: file.name });
     } else {
@@ -72,7 +94,7 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
   useEffect(() => {
     api.getIceServers()
       .then((res) => {
-        if (res?.iceServers) iceServersRef.current = res.iceServers;
+        if (res?.iceServers && res.iceServers.length > 0) iceServersRef.current = res.iceServers;
       })
       .catch(() => {});
   }, []);
@@ -100,6 +122,15 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
 
     channel.onopen = () => {
       console.log(`[MovieTransfer] 📡 P2P Video DataChannel OPENED with viewer ${targetUserId}`);
+      const file = localFileRef.current;
+      if (file) {
+        channel.send(JSON.stringify({
+          type: 'metadata',
+          fileSize: file.size,
+          mimeType: file.type || 'video/mp4',
+          fileName: file.name,
+        }));
+      }
     };
 
     channel.onclose = () => {
@@ -140,7 +171,6 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
             const blobSlice = file.slice(startByte, Math.min(file.size, endByte));
             const buffer = await blobSlice.arrayBuffer();
 
-
             if (channel.readyState === 'open' && !abortController.signal.aborted) {
               // Send metadata header first
               channel.send(JSON.stringify({
@@ -167,13 +197,13 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
     };
   };
 
-
   // Setup Peer Consumer DataChannel
   const setupConsumerDataChannel = (targetUserId: string, channel: RTCDataChannel) => {
     channel.binaryType = 'arraybuffer';
     dataChannelsRef.current.set(targetUserId, channel);
 
-    let activeTransfer: { requestId: string; totalBytes: number; receivedBytes: number; chunks: Uint8Array[] } | null = null;
+    const activeTransfersMap = new Map<string, { totalBytes: number; receivedBytes: number; chunks: Uint8Array[] }>();
+    let currentRequestId: string | null = null;
 
     channel.onopen = () => {
       console.log(`📡 P2P Video Consumer DataChannel OPENED with provider ${targetUserId}`);
@@ -205,33 +235,40 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
               fileName: msg.fileName,
             });
           } else if (msg.type === 'chunk-start') {
-            activeTransfer = {
-              requestId: msg.requestId,
+            activeTransfersMap.set(msg.requestId, {
               totalBytes: msg.totalBytes,
               receivedBytes: 0,
               chunks: [],
-            };
+            });
+            currentRequestId = msg.requestId;
           }
-        } else if (event.data instanceof ArrayBuffer && activeTransfer) {
-          const frameUint8 = new Uint8Array(event.data);
-          activeTransfer.chunks.push(frameUint8);
-          activeTransfer.receivedBytes += frameUint8.byteLength;
+        } else if (event.data instanceof ArrayBuffer && currentRequestId) {
+          const activeTransfer = activeTransfersMap.get(currentRequestId);
+          if (activeTransfer) {
+            const frameUint8 = new Uint8Array(event.data);
+            activeTransfer.chunks.push(frameUint8);
+            activeTransfer.receivedBytes += frameUint8.byteLength;
 
-          if (activeTransfer.receivedBytes >= activeTransfer.totalBytes) {
-            const { requestId, totalBytes, chunks } = activeTransfer;
-            const fullBuffer = new Uint8Array(totalBytes);
-            let pos = 0;
-            for (const chunk of chunks) {
-              fullBuffer.set(chunk, pos);
-              pos += chunk.byteLength;
-            }
+            if (activeTransfer.receivedBytes >= activeTransfer.totalBytes) {
+              const reqId = currentRequestId;
+              const { totalBytes, chunks } = activeTransfer;
+              const fullBuffer = new Uint8Array(totalBytes);
+              let pos = 0;
+              for (const chunk of chunks) {
+                fullBuffer.set(chunk, pos);
+                pos += chunk.byteLength;
+              }
 
-            const resolver = chunkResolversRef.current.get(requestId);
-            if (resolver) {
-              resolver(fullBuffer.buffer);
-              chunkResolversRef.current.delete(requestId);
+              const resolver = chunkResolversRef.current.get(reqId);
+              if (resolver) {
+                resolver(fullBuffer.buffer);
+                chunkResolversRef.current.delete(reqId);
+              }
+              activeTransfersMap.delete(reqId);
+              if (currentRequestId === reqId) {
+                currentRequestId = null;
+              }
             }
-            activeTransfer = null;
           }
         }
       } catch (err) {
@@ -239,7 +276,6 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
       }
     };
   };
-
 
   // Connect to Host Provider (Viewer Side)
   const connectToHostProvider = async (providerUserId: string) => {
@@ -362,8 +398,6 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
       }
     };
 
-
-
     const handleIce = async ({ fromUserId, candidate }: { fromUserId: string; candidate: any }) => {
       try {
         const pc = pcsRef.current.get(fromUserId);
@@ -381,7 +415,13 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
 
     const handleProviderReady = ({ providerId }: { providerId: string; videoId: string }) => {
       if (currentUserId && currentUserId !== providerId) {
-        connectToHostProvider(providerId);
+        const existingDc = dataChannelsRef.current.get(providerId);
+        if (existingDc && existingDc.readyState === 'open') {
+          console.log('[MovieTransfer] Existing DataChannel OPEN with provider, requesting metadata directly');
+          existingDc.send(JSON.stringify({ type: 'request-metadata' }));
+        } else {
+          connectToHostProvider(providerId);
+        }
       }
     };
 
