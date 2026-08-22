@@ -12,7 +12,9 @@ export interface P2PVideoContextType {
   peerCount: number;
   requestChunk: (startByte: number, endByte: number) => Promise<ArrayBuffer | null>;
   peerVideoMetadata: { fileSize: number; mimeType: string; fileName: string } | null;
+  reconnectP2P: () => void;
 }
+
 
 const P2PVideoContext = createContext<P2PVideoContextType | null>(null);
 
@@ -374,11 +376,19 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
       setPeerCount(dataChannelsRef.current.size);
     };
 
+    const handleUserJoined = () => {
+      if (localFileRef.current) {
+        console.log('[MovieTransfer] New user joined room - re-broadcasting provider-ready event');
+        socket.emit('p2p-video:provider-ready', { videoId: localFileRef.current.name });
+      }
+    };
+
     socket.on('p2p-video:offer', handleOffer);
     socket.on('p2p-video:answer', handleAnswer);
     socket.on('p2p-video:ice', handleIce);
     socket.on('p2p-video:provider-ready', handleProviderReady);
     socket.on('room:user-left', handleUserLeft);
+    socket.on('room:user-joined', handleUserJoined);
 
     if (hostId && currentUserId && currentUserId !== hostId && p2pStatus === 'idle') {
       connectToHostProvider(hostId);
@@ -390,9 +400,25 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
       socket.off('p2p-video:ice', handleIce);
       socket.off('p2p-video:provider-ready', handleProviderReady);
       socket.off('room:user-left', handleUserLeft);
+      socket.off('room:user-joined', handleUserJoined);
     };
 
   }, [currentUserId, hostId]);
+
+  // Reconnect P2P Stream manually or on retry
+  const reconnectP2P = () => {
+    if (hostId && currentUserId && currentUserId !== hostId) {
+      console.log(`[MovieTransfer] Reconnecting P2P DataChannel stream to host ${hostId}`);
+      const pc = pcsRef.current.get(hostId);
+      if (pc) {
+        pc.close();
+        pcsRef.current.delete(hostId);
+      }
+      dataChannelsRef.current.delete(hostId);
+      setP2pError(null);
+      connectToHostProvider(hostId);
+    }
+  };
 
   // Request chunk from provider over DataChannel
   const requestChunk = (startByte: number, endByte: number): Promise<ArrayBuffer | null> => {
@@ -433,12 +459,14 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
         peerCount,
         requestChunk,
         peerVideoMetadata,
+        reconnectP2P,
       }}
     >
       {children}
     </P2PVideoContext.Provider>
   );
 };
+
 
 export function useP2PVideo() {
   const ctx = useContext(P2PVideoContext);

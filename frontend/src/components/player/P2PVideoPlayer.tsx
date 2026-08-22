@@ -20,7 +20,7 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
   onEnded,
   onVideoDimensionsChange,
 }) => {
-  const { localVideoObjectUrl, p2pStatus, p2pError, requestChunk, peerVideoMetadata, peerCount } = useP2PVideo();
+  const { localVideoObjectUrl, p2pStatus, p2pError, requestChunk, peerVideoMetadata, peerCount, reconnectP2P } = useP2PVideo();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [bufferProgress, setBufferProgress] = useState(0);
@@ -37,6 +37,7 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
       setStreamUrl(localVideoObjectUrl);
     }
   }, [isHost, localVideoObjectUrl]);
+
 
   // Peer Viewer: Receive progressive P2P chunks over DataChannel
   useEffect(() => {
@@ -211,7 +212,10 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
           <ShieldAlert size={40} color="var(--danger)" style={{ marginBottom: '12px' }} />
           <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#fca5a5', marginBottom: '6px' }}>P2P Direct Video Connection Failed</h4>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '420px', marginBottom: '16px' }}>{p2pError}</p>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>Note: Central backend bandwidth streaming is disabled. Direct peer-to-peer connection requires host availability.</p>
+          <button className="btn btn-primary btn-sm" onClick={reconnectP2P} style={{ gap: '6px' }}>
+            <RefreshCw size={14} />
+            <span>Reconnect P2P Stream</span>
+          </button>
         </div>
       ) : !isHost && p2pStatus === 'connecting' && !streamUrl ? (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
@@ -222,10 +226,15 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
       ) : !isHost && p2pStatus === 'disconnected' ? (
         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
           <WifiOff size={40} color="var(--warning)" style={{ marginBottom: '12px' }} />
-          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--warning)', marginBottom: '6px' }}>Video Host Disconnected</h4>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '400px' }}>The video source host has disconnected from the room. Waiting for host to reconnect or select a new video.</p>
+          <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--warning)', marginBottom: '6px' }}>Video Host Stream Standing By</h4>
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', maxWidth: '400px', marginBottom: '16px' }}>Waiting for host to share video stream or tap below to connect directly.</p>
+          <button className="btn btn-primary btn-sm" onClick={reconnectP2P} style={{ gap: '6px' }}>
+            <RefreshCw size={14} />
+            <span>Connect / Reconnect P2P Stream</span>
+          </button>
         </div>
       ) : (
+
         <video
           ref={videoRef}
           src={streamUrl || undefined}
