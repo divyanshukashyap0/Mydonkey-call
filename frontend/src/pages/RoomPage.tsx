@@ -430,619 +430,607 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
 
   return (
     <P2PVideoProvider currentUserId={user?.id} hostId={currentRoom?.hostId}>
-    <WebRTCProvider currentUserId={user?.id}>
-      <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-dark)' }}>
+      <WebRTCProvider currentUserId={user?.id}>
+        <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-dark)' }}>
 
-      <Navbar onOpenCreateModal={() => setIsHostSettingsOpen(true)} />
+          <Navbar onOpenCreateModal={() => setIsHostSettingsOpen(true)} />
 
-      {/* Mobile Telemetry Subheader Bar */}
-      <div
-        className="mobile-subheader-bar"
-        style={{
-          padding: '8px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          background: 'rgba(14, 16, 22, 0.85)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-          fontSize: '0.82rem',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-          <Film size={15} color="var(--primary)" />
-          <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '160px' }}>
-            {currentVideo?.title || 'Avengers: Endgame'}
-          </strong>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '2px 8px', borderRadius: '12px', color: 'var(--success)', fontSize: '0.72rem' }}>
-            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
-            <span>Synced (+0.12s)</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
-            <Users size={13} />
-            <span>{participants.length}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Top Controls Bar (Ready System + Connection Health + Debug Console) */}
-      <div className="desktop-top-controls" style={{ padding: '8px 16px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-        {currentRoom && user && (
-          <ReadySystemBar
-            room={currentRoom}
-            currentUserId={user.id}
-            isHost={currentRoom.hostId === user.id}
-            participants={participants}
-            onSyncToRoom={handleManualSync}
-          />
-        )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
-          <ConnectionHealthBadge />
-          <button
-            onClick={() => setIsDebugOpen(true)}
+          {/* Mobile Telemetry Subheader Bar */}
+          <div
+            className="mobile-subheader-bar"
             style={{
-              padding: '4px 8px',
-              borderRadius: '20px',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              background: 'rgba(15, 23, 42, 0.65)',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
+              padding: '8px 16px',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px',
-              fontSize: '0.75rem',
-              fontWeight: 600,
+              justifyContent: 'space-between',
+              background: 'rgba(14, 16, 22, 0.85)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              fontSize: '0.82rem',
             }}
-            title="Developer Debug Console"
           >
-            <Terminal size={12} /> Debug
-          </button>
+
+
+
+          </div>
         </div>
-      </div>
 
-      {/* Main Responsive Room Container */}
-      <div className="room-layout-container">
-        {/* Left Side: Room Code, Nav Menu, Room Info & Connection Health */}
-        <div className="left-sidebar">
-          {/* Room Code Card */}
-          <div className="glass-panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)' }}>ROOM CODE</div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="mono" style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', letterSpacing: '2px' }}>{currentRoom?.roomCode}</span>
-              <button
-                className="btn btn-secondary btn-icon"
-                style={{ width: '32px', height: '32px' }}
-                onClick={() => {
-                  navigator.clipboard.writeText(currentRoom?.roomCode || '');
-                  showToast(`Copied room code: ${currentRoom?.roomCode}`, 'success');
-                }}
-                title="Copy Room Code"
-              >
-                <Copy size={14} />
-              </button>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--success)' }}>
-              <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--success)' }} />
-              <span>Shareable</span>
-            </div>
+        {/* Top Controls Bar (Ready System + Connection Health + Debug Console) */}
+        <div className="desktop-top-controls" style={{ padding: '8px 16px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+          {currentRoom && user && (
+            <ReadySystemBar
+              room={currentRoom}
+              currentUserId={user.id}
+              isHost={currentRoom.hostId === user.id}
+              participants={participants}
+              onSyncToRoom={handleManualSync}
+            />
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}>
+            <ConnectionHealthBadge />
             <button
-              className="btn btn-primary"
-              style={{ width: '100%', fontSize: '0.82rem', padding: '8px 12px', background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' }}
-              onClick={() => setIsShareOpen(true)}
-            >
-              <UserPlus size={14} />
-              <span>Invite Friends</span>
-            </button>
-
-          </div>
-
-          {/* Navigation Items */}
-          <div className="glass-panel" style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-            {[
-              { id: 'watch', label: 'Watch Party', icon: Film },
-              { id: 'chat', label: 'Chat', icon: MessageSquare },
-              { id: 'participants', label: 'Participants', icon: Users },
-              { id: 'library', label: 'My Library', icon: Folder },
-              { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
-              { id: 'settings', label: 'Settings', icon: Settings },
-            ].map((item) => {
-              const isActive = activeNav === item.id;
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    setActiveNav(item.id as any);
-                    if (item.id === 'watch') {
-                      stageRef.current?.scrollIntoView({ behavior: 'smooth' });
-                      showToast('Switched to Cinema Watch View', 'info');
-                    } else if (item.id === 'chat') {
-                      setActiveTab('chat');
-                      showToast('Switched to Room Chat', 'info');
-                    } else if (item.id === 'participants') {
-                      setActiveTab('participants');
-                      showToast('Switched to Participants List', 'info');
-                    } else if (item.id === 'library') {
-                      setIsSelectVideoOpen(true);
-                    } else if (item.id === 'bookmarks') {
-                      showToast(`Bookmarked current video: ${currentVideo?.title || 'Watch Room'}`, 'success');
-                    } else if (item.id === 'settings') {
-                      setIsHostSettingsOpen(true);
-                    }
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '9px 12px',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    color: isActive ? '#fff' : 'var(--text-muted)',
-                    background: isActive ? 'rgba(229, 9, 20, 0.22)' : 'transparent',
-                    borderLeft: isActive ? '3px solid var(--primary)' : '3px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <item.icon size={15} color={isActive ? 'var(--primary)' : 'var(--text-muted)'} />
-                  <span>{item.label}</span>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Room Info Card */}
-          <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem' }}>
-            <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '2px' }}>ROOM INFO</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Room Name</span>
-              <strong style={{ color: '#fff' }}>{currentRoom?.currentVideo?.title ? currentRoom.currentVideo.title.slice(0, 14) + '...' : 'Watch Room'}</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Host</span>
-              <strong style={{ color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '3px' }}>
-                {participants.find((p) => p.role === 'HOST')?.user?.displayName || 'Host'} 👑
-              </strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Privacy</span>
-              <strong style={{ color: '#fff' }}>Invite Only</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Expires In</span>
-              <strong style={{ color: 'var(--accent)' }}>24h Active</strong>
-            </div>
-
-            <button
-              className="btn btn-secondary"
-              style={{ width: '100%', marginTop: '6px', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.3)', fontSize: '0.78rem', padding: '6px' }}
-              onClick={() => {
-                if (currentRoom?.hostId === user?.id) {
-                  setIsHostSettingsOpen(true);
-                } else {
-                  if (confirm('Are you sure you want to leave the watch room?')) {
-                    getSocket().emit('room:leave');
-                    window.location.href = '/';
-                  }
-                }
+              onClick={() => setIsDebugOpen(true)}
+              style={{
+                padding: '4px 8px',
+                borderRadius: '20px',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                background: 'rgba(15, 23, 42, 0.65)',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
               }}
+              title="Developer Debug Console"
             >
-              <span>{currentRoom?.hostId === user?.id ? 'End Room Settings' : 'Leave Room'}</span>
+              <Terminal size={12} /> Debug
             </button>
-          </div>
-
-          {/* Connection Health */}
-          <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '0.78rem' }}>
-            <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '2px' }}>CONNECTION</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Video</span>
-              <strong style={{ color: 'var(--success)' }}>Excellent</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>WebRTC</span>
-              <strong style={{ color: 'var(--success)' }}>Good</strong>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--text-muted)' }}>Server</span>
-              <strong style={{ color: 'var(--success)' }}>Excellent</strong>
-            </div>
           </div>
         </div>
 
-        {/* Center: Video Stage & Call Controls */}
-        <div className="video-section">
-          {/* Main Video Stage (Supports Fullscreen API) */}
-          <div ref={stageRef} className="glass-panel video-stage">
-            {/* Video Player Box */}
-            <div style={{ flex: 1, width: '100%', height: '100%', position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: '#000' }}>
-              {currentVideo?.sourceType === 'YOUTUBE' && currentVideo.youtubeVideoId ? (
-                <YouTubePlayer
-                  videoId={currentVideo.youtubeVideoId}
-                  onReady={(player) => {
-                    playerRef.current = player;
+        {/* Main Responsive Room Container */}
+        <div className="room-layout-container">
+          {/* Left Side: Room Code, Nav Menu, Room Info & Connection Health */}
+          <div className="left-sidebar">
+            {/* Room Code Card */}
+            <div className="glass-panel" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)' }}>ROOM CODE</div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span className="mono" style={{ fontSize: '1.4rem', fontWeight: 800, color: '#fff', letterSpacing: '2px' }}>{currentRoom?.roomCode}</span>
+                <button
+                  className="btn btn-secondary btn-icon"
+                  style={{ width: '32px', height: '32px' }}
+                  onClick={() => {
+                    navigator.clipboard.writeText(currentRoom?.roomCode || '');
+                    showToast(`Copied room code: ${currentRoom?.roomCode}`, 'success');
                   }}
-                  onEnded={handleVideoEnded}
-                />
-              ) : currentVideo?.sourceType === 'UPLOADED' ? (
-                <P2PVideoPlayer
-                  isHost={isHost}
-                  videoTitle={currentVideo.title}
-                  onReady={(_videoEl, controller) => {
-                    playerRef.current = controller;
-                  }}
-                  onVideoDimensionsChange={(_w, _h, ratio, label) => {
-                    setVideoAspectRatio(ratio);
-                    setAspectRatioLabel(label);
-                  }}
-                  onEnded={handleVideoEnded}
-                />
-              ) : (
-
-                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', background: 'rgba(0,0,0,0.5)', padding: '24px', textAlign: 'center' }}>
-                  <div style={{ width: '56px', height: '56px', borderRadius: '18px', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', marginBottom: '16px' }}>
-                    <Sparkles size={28} />
-                  </div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '6px' }}>No Video Loaded Yet</h3>
-                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', maxWidth: '420px', marginBottom: '20px' }}>
-                    {canControl
-                      ? 'Choose a YouTube URL or upload a video file to start watching together.'
-                      : 'Waiting for the room host to select a video.'}
-                  </p>
-                  {canControl && (
-                    <button className="btn btn-primary" onClick={() => setIsSelectVideoOpen(true)}>
-                      <Plus size={18} />
-                      <span>Choose Video Source</span>
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Fullscreen Top Header Overlay Bar */}
-              {isFullscreen && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '64px',
-                    zIndex: 'var(--z-fullscreen-overlay)',
-                    padding: '0 24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: 'linear-gradient(to bottom, rgba(10, 14, 24, 0.85) 0%, rgba(10, 14, 24, 0) 100%)',
-                    opacity: !showControls ? 0 : 1,
-                    pointerEvents: !showControls ? 'none' : 'auto',
-                    transition: 'opacity 0.3s ease-in-out',
-                  }}
+                  title="Copy Room Code"
                 >
-                  {/* Left: Exit Fullscreen & Brand */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    <button
-                      onClick={toggleFullscreen}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '4px',
-                      }}
-                      title="Exit Fullscreen"
-                    >
-                      <ChevronLeft size={22} />
-                    </button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '1rem', color: '#fff', letterSpacing: '-0.3px' }}>
-                      <span style={{ fontSize: '1.2rem' }}>🫏</span>
-                      <span>mydonkey-call</span>
-                    </div>
-                  </div>
-
-                  {/* Right: Quick Action Controls */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <button
-                      onClick={() => {
-                        if (currentRoom) navigator.clipboard.writeText(window.location.href);
-                      }}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '20px',
-                        padding: '5px 14px',
-                        color: '#fff',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        backdropFilter: 'blur(10px)',
-                      }}
-                      title="Copy Shareable Room Link"
-                    >
-                      <ExternalLink size={14} />
-                      <span>Copy Link</span>
-                    </button>
-
-                    <button
-                      onClick={() => setShowFloatingParticipants(!showFloatingParticipants)}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '20px',
-                        padding: '5px 12px',
-                        color: '#fff',
-                        fontSize: '0.8rem',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        backdropFilter: 'blur(10px)',
-                      }}
-                      title="Room Participants"
-                    >
-                      <Users size={14} />
-                      <span>{participants.length}</span>
-                    </button>
-
-                    <button
-                      onClick={toggleFullscreen}
-                      style={{
-                        background: 'rgba(255, 255, 255, 0.08)',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '10px',
-                        width: '32px',
-                        height: '32px',
-                        color: '#fff',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backdropFilter: 'blur(10px)',
-                      }}
-                      title="Exit Fullscreen"
-                    >
-                      <Minimize2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Floating WebRTC Video Call Overlay (Active ONLY in Fullscreen Mode) */}
-              {isFullscreen && (
-                <div
-                  style={{
-                    opacity: !showControls ? 0 : 1,
-                    pointerEvents: !showControls ? 'none' : 'auto',
-                    transition: 'opacity 0.3s ease-in-out',
-                  }}
-                >
-                  <FloatingCallOverlay
-                    isFullscreen
-                    onToggleChat={() => setShowFloatingChat(!showFloatingChat)}
-                    onToggleParticipants={() => setShowFloatingParticipants(!showFloatingParticipants)}
-                  />
-                </div>
-              )}
-
-              {/* Fullscreen Floating Chat Drawer */}
-              {showFloatingChat && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '16px',
-                    left: '16px',
-                    width: 'min(90vw, 320px)',
-                    height: 'calc(100% - 100px)',
-                    zIndex: 'var(--z-fullscreen-overlay)',
-                    opacity: isFullscreen && !showControls ? 0 : 1,
-                    pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
-                    transition: 'opacity 0.3s ease-in-out',
-                  }}
-                >
-                  <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Room Chat</span>
-                      <button onClick={() => setShowFloatingChat(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                        <X size={16} />
-                      </button>
-                    </div>
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <ChatPanel />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Fullscreen Floating Participants Drawer */}
-              {showFloatingParticipants && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '16px',
-                    left: '16px',
-                    width: 'min(90vw, 300px)',
-                    height: 'calc(100% - 100px)',
-                    zIndex: 'var(--z-fullscreen-overlay)',
-                    opacity: isFullscreen && !showControls ? 0 : 1,
-                    pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
-                    transition: 'opacity 0.3s ease-in-out',
-                  }}
-                >
-                  <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '12px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Participants</span>
-                      <button onClick={() => setShowFloatingParticipants(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                        <X size={16} />
-                      </button>
-                    </div>
-                    <div style={{ flex: 1, overflow: 'hidden' }}>
-                      <ParticipantList />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Floating Over-Video Control Bar */}
-              {currentVideo && (
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: '16px',
-                    left: '16px',
-                    right: '16px',
-                    zIndex: 30,
-                    opacity: isFullscreen && !showControls ? 0 : 1,
-                    pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
-                    transition: 'opacity 0.3s ease-in-out',
-                  }}
-                >
-                  <VideoControlBar
-                    playbackState={authoritativePlayback?.state || 'PAUSED'}
-                    currentTime={currentTime}
-                    duration={duration}
-                    playbackRate={authoritativePlayback?.playbackRate || 1.0}
-                    isMuted={isMuted}
-                    driftMs={driftMs}
-                    canControl={canControl}
-                    audioTracks={audioTracks}
-                    selectedAudioTrackId={selectedAudioTrackId}
-                    aspectRatioLabel={aspectRatioLabel}
-                    onSelectAudioTrack={(trackId) => {
-                      setSelectedAudioTrackId(trackId);
-                      if (playerRef.current && playerRef.current.setAudioTrack) {
-                        playerRef.current.setAudioTrack(trackId);
-                      }
-                    }}
-                    onPlay={handleUserPlay}
-                    onPause={handleUserPause}
-                    onSeek={handleUserSeek}
-                    onRateChange={handleRateChange}
-                    onToggleMute={toggleMute}
-                    onToggleFullscreen={toggleFullscreen}
-                    onManualSync={handleManualSync}
-                    onToggleFloatingChat={() => setShowFloatingChat(!showFloatingChat)}
-                    onToggleFloatingParticipants={() => setShowFloatingParticipants(!showFloatingParticipants)}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* WebRTC Bottom Strip (Visible in Normal Layout) */}
-          <div className="webrtc-strip">
-            <VideoGrid />
-          </div>
-        </div>
-
-        {/* Right Side Sidebar (Chat, Participants & Host Quick Controls) */}
-        <div className="sidebar-section">
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-            <button
-              className={`btn btn-sm ${activeTab === 'chat' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ flex: 1, background: activeTab === 'chat' ? 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' : undefined }}
-              onClick={() => setActiveTab('chat')}
-            >
-              Chat
-            </button>
-            <button
-              className={`btn btn-sm ${activeTab === 'participants' ? 'btn-primary' : 'btn-secondary'}`}
-              style={{ flex: 1, background: activeTab === 'participants' ? 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' : undefined }}
-              onClick={() => setActiveTab('participants')}
-            >
-              Participants
-            </button>
-          </div>
-
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            {activeTab === 'chat' ? (
-              <ChatPanel />
-            ) : (
-              <ParticipantList />
-            )}
-          </div>
-
-          {/* Host Quick Controls Panel - Visible to HOST ONLY */}
-          {isHost && (
-            <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Crown size={12} color="var(--warning)" />
-                <span>HOST CONTROLS</span>
+                  <Copy size={14} />
+                </button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleUserPlay}>
-                  <Play size={12} /> Play
-                </button>
-                <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleUserPause}>
-                  <Pause size={12} /> Pause
-                </button>
-                <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleManualSync}>
-                  <RefreshCw size={12} /> Sync
-                </button>
-                <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={() => getSocket().emit('room:toggle-lock')}>
-                  <Lock size={12} /> Lock
-                </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: 'var(--success)' }}>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: 'var(--success)' }} />
+                <span>Shareable</span>
               </div>
               <button
                 className="btn btn-primary"
-                style={{ width: '100%', fontSize: '0.8rem', padding: '6px', background: 'linear-gradient(135deg, #e50914 0%, #990000 100%)' }}
-                onClick={() => setIsHostSettingsOpen(true)}
+                style={{ width: '100%', fontSize: '0.82rem', padding: '8px 12px', background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' }}
+                onClick={() => setIsShareOpen(true)}
               >
-                <span>End Room</span>
+                <UserPlus size={14} />
+                <span>Invite Friends</span>
+              </button>
+
+            </div>
+
+            {/* Navigation Items */}
+            <div className="glass-panel" style={{ padding: '6px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {[
+                { id: 'watch', label: 'Watch Party', icon: Film },
+                { id: 'chat', label: 'Chat', icon: MessageSquare },
+                { id: 'participants', label: 'Participants', icon: Users },
+                { id: 'library', label: 'My Library', icon: Folder },
+                { id: 'bookmarks', label: 'Bookmarks', icon: Bookmark },
+                { id: 'settings', label: 'Settings', icon: Settings },
+              ].map((item) => {
+                const isActive = activeNav === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => {
+                      setActiveNav(item.id as any);
+                      if (item.id === 'watch') {
+                        stageRef.current?.scrollIntoView({ behavior: 'smooth' });
+                        showToast('Switched to Cinema Watch View', 'info');
+                      } else if (item.id === 'chat') {
+                        setActiveTab('chat');
+                        showToast('Switched to Room Chat', 'info');
+                      } else if (item.id === 'participants') {
+                        setActiveTab('participants');
+                        showToast('Switched to Participants List', 'info');
+                      } else if (item.id === 'library') {
+                        setIsSelectVideoOpen(true);
+                      } else if (item.id === 'bookmarks') {
+                        showToast(`Bookmarked current video: ${currentVideo?.title || 'Watch Room'}`, 'success');
+                      } else if (item.id === 'settings') {
+                        setIsHostSettingsOpen(true);
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '9px 12px',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      color: isActive ? '#fff' : 'var(--text-muted)',
+                      background: isActive ? 'rgba(229, 9, 20, 0.22)' : 'transparent',
+                      borderLeft: isActive ? '3px solid var(--primary)' : '3px solid transparent',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <item.icon size={15} color={isActive ? 'var(--primary)' : 'var(--text-muted)'} />
+                    <span>{item.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Room Info Card */}
+            <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.78rem' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '2px' }}>ROOM INFO</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Room Name</span>
+                <strong style={{ color: '#fff' }}>{currentRoom?.currentVideo?.title ? currentRoom.currentVideo.title.slice(0, 14) + '...' : 'Watch Room'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Host</span>
+                <strong style={{ color: 'var(--warning)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                  {participants.find((p) => p.role === 'HOST')?.user?.displayName || 'Host'} 👑
+                </strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Privacy</span>
+                <strong style={{ color: '#fff' }}>Invite Only</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Expires In</span>
+                <strong style={{ color: 'var(--accent)' }}>24h Active</strong>
+              </div>
+
+              <button
+                className="btn btn-secondary"
+                style={{ width: '100%', marginTop: '6px', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.3)', fontSize: '0.78rem', padding: '6px' }}
+                onClick={() => {
+                  if (currentRoom?.hostId === user?.id) {
+                    setIsHostSettingsOpen(true);
+                  } else {
+                    if (confirm('Are you sure you want to leave the watch room?')) {
+                      getSocket().emit('room:leave');
+                      window.location.href = '/';
+                    }
+                  }
+                }}
+              >
+                <span>{currentRoom?.hostId === user?.id ? 'End Room Settings' : 'Leave Room'}</span>
               </button>
             </div>
-          )}
+
+            {/* Connection Health */}
+            <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '5px', fontSize: '0.78rem' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', marginBottom: '2px' }}>CONNECTION</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Video</span>
+                <strong style={{ color: 'var(--success)' }}>Excellent</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>WebRTC</span>
+                <strong style={{ color: 'var(--success)' }}>Good</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Server</span>
+                <strong style={{ color: 'var(--success)' }}>Excellent</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Center: Video Stage & Call Controls */}
+          <div className="video-section">
+            {/* Main Video Stage (Supports Fullscreen API) */}
+            <div ref={stageRef} className="glass-panel video-stage">
+              {/* Video Player Box */}
+              <div style={{ flex: 1, width: '100%', height: '100%', position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: '#000' }}>
+                {currentVideo?.sourceType === 'YOUTUBE' && currentVideo.youtubeVideoId ? (
+                  <YouTubePlayer
+                    videoId={currentVideo.youtubeVideoId}
+                    onReady={(player) => {
+                      playerRef.current = player;
+                    }}
+                    onEnded={handleVideoEnded}
+                  />
+                ) : currentVideo?.sourceType === 'UPLOADED' ? (
+                  <P2PVideoPlayer
+                    isHost={isHost}
+                    videoTitle={currentVideo.title}
+                    onReady={(_videoEl, controller) => {
+                      playerRef.current = controller;
+                    }}
+                    onVideoDimensionsChange={(_w, _h, ratio, label) => {
+                      setVideoAspectRatio(ratio);
+                      setAspectRatioLabel(label);
+                    }}
+                    onEnded={handleVideoEnded}
+                  />
+                ) : (
+
+                  <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', background: 'rgba(0,0,0,0.5)', padding: '24px', textAlign: 'center' }}>
+                    <div style={{ width: '56px', height: '56px', borderRadius: '18px', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', marginBottom: '16px' }}>
+                      <Sparkles size={28} />
+                    </div>
+                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '6px' }}>No Video Loaded Yet</h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', maxWidth: '420px', marginBottom: '20px' }}>
+                      {canControl
+                        ? 'Choose a YouTube URL or upload a video file to start watching together.'
+                        : 'Waiting for the room host to select a video.'}
+                    </p>
+                    {canControl && (
+                      <button className="btn btn-primary" onClick={() => setIsSelectVideoOpen(true)}>
+                        <Plus size={18} />
+                        <span>Choose Video Source</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Fullscreen Top Header Overlay Bar */}
+                {isFullscreen && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '64px',
+                      zIndex: 'var(--z-fullscreen-overlay)',
+                      padding: '0 24px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: 'linear-gradient(to bottom, rgba(10, 14, 24, 0.85) 0%, rgba(10, 14, 24, 0) 100%)',
+                      opacity: !showControls ? 0 : 1,
+                      pointerEvents: !showControls ? 'none' : 'auto',
+                      transition: 'opacity 0.3s ease-in-out',
+                    }}
+                  >
+                    {/* Left: Exit Fullscreen & Brand */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      <button
+                        onClick={toggleFullscreen}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '4px',
+                        }}
+                        title="Exit Fullscreen"
+                      >
+                        <ChevronLeft size={22} />
+                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '1rem', color: '#fff', letterSpacing: '-0.3px' }}>
+                        <span style={{ fontSize: '1.2rem' }}>🫏</span>
+                        <span>mydonkey-call</span>
+                      </div>
+                    </div>
+
+                    {/* Right: Quick Action Controls */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <button
+                        onClick={() => {
+                          if (currentRoom) navigator.clipboard.writeText(window.location.href);
+                        }}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '20px',
+                          padding: '5px 14px',
+                          color: '#fff',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          backdropFilter: 'blur(10px)',
+                        }}
+                        title="Copy Shareable Room Link"
+                      >
+                        <ExternalLink size={14} />
+                        <span>Copy Link</span>
+                      </button>
+
+                      <button
+                        onClick={() => setShowFloatingParticipants(!showFloatingParticipants)}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '20px',
+                          padding: '5px 12px',
+                          color: '#fff',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          backdropFilter: 'blur(10px)',
+                        }}
+                        title="Room Participants"
+                      >
+                        <Users size={14} />
+                        <span>{participants.length}</span>
+                      </button>
+
+                      <button
+                        onClick={toggleFullscreen}
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.08)',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '10px',
+                          width: '32px',
+                          height: '32px',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backdropFilter: 'blur(10px)',
+                        }}
+                        title="Exit Fullscreen"
+                      >
+                        <Minimize2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Floating WebRTC Video Call Overlay (Active ONLY in Fullscreen Mode) */}
+                {isFullscreen && (
+                  <div
+                    style={{
+                      opacity: !showControls ? 0 : 1,
+                      pointerEvents: !showControls ? 'none' : 'auto',
+                      transition: 'opacity 0.3s ease-in-out',
+                    }}
+                  >
+                    <FloatingCallOverlay
+                      isFullscreen
+                      onToggleChat={() => setShowFloatingChat(!showFloatingChat)}
+                      onToggleParticipants={() => setShowFloatingParticipants(!showFloatingParticipants)}
+                    />
+                  </div>
+                )}
+
+                {/* Fullscreen Floating Chat Drawer */}
+                {showFloatingChat && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '16px',
+                      left: '16px',
+                      width: 'min(90vw, 320px)',
+                      height: 'calc(100% - 100px)',
+                      zIndex: 'var(--z-fullscreen-overlay)',
+                      opacity: isFullscreen && !showControls ? 0 : 1,
+                      pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
+                      transition: 'opacity 0.3s ease-in-out',
+                    }}
+                  >
+                    <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Room Chat</span>
+                        <button onClick={() => setShowFloatingChat(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <ChatPanel />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Fullscreen Floating Participants Drawer */}
+                {showFloatingParticipants && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '16px',
+                      left: '16px',
+                      width: 'min(90vw, 300px)',
+                      height: 'calc(100% - 100px)',
+                      zIndex: 'var(--z-fullscreen-overlay)',
+                      opacity: isFullscreen && !showControls ? 0 : 1,
+                      pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
+                      transition: 'opacity 0.3s ease-in-out',
+                    }}
+                  >
+                    <div className="glass-panel" style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Participants</span>
+                        <button onClick={() => setShowFloatingParticipants(false)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <ParticipantList />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Floating Over-Video Control Bar */}
+                {currentVideo && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '16px',
+                      left: '16px',
+                      right: '16px',
+                      zIndex: 30,
+                      opacity: isFullscreen && !showControls ? 0 : 1,
+                      pointerEvents: isFullscreen && !showControls ? 'none' : 'auto',
+                      transition: 'opacity 0.3s ease-in-out',
+                    }}
+                  >
+                    <VideoControlBar
+                      playbackState={authoritativePlayback?.state || 'PAUSED'}
+                      currentTime={currentTime}
+                      duration={duration}
+                      playbackRate={authoritativePlayback?.playbackRate || 1.0}
+                      isMuted={isMuted}
+                      driftMs={driftMs}
+                      canControl={canControl}
+                      audioTracks={audioTracks}
+                      selectedAudioTrackId={selectedAudioTrackId}
+                      aspectRatioLabel={aspectRatioLabel}
+                      onSelectAudioTrack={(trackId) => {
+                        setSelectedAudioTrackId(trackId);
+                        if (playerRef.current && playerRef.current.setAudioTrack) {
+                          playerRef.current.setAudioTrack(trackId);
+                        }
+                      }}
+                      onPlay={handleUserPlay}
+                      onPause={handleUserPause}
+                      onSeek={handleUserSeek}
+                      onRateChange={handleRateChange}
+                      onToggleMute={toggleMute}
+                      onToggleFullscreen={toggleFullscreen}
+                      onManualSync={handleManualSync}
+                      onToggleFloatingChat={() => setShowFloatingChat(!showFloatingChat)}
+                      onToggleFloatingParticipants={() => setShowFloatingParticipants(!showFloatingParticipants)}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* WebRTC Bottom Strip (Visible in Normal Layout) */}
+            <div className="webrtc-strip">
+              <VideoGrid />
+            </div>
+          </div>
+
+          {/* Right Side Sidebar (Chat, Participants & Host Quick Controls) */}
+          <div className="sidebar-section">
+            <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+              <button
+                className={`btn btn-sm ${activeTab === 'chat' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ flex: 1, background: activeTab === 'chat' ? 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' : undefined }}
+                onClick={() => setActiveTab('chat')}
+              >
+                Chat
+              </button>
+              <button
+                className={`btn btn-sm ${activeTab === 'participants' ? 'btn-primary' : 'btn-secondary'}`}
+                style={{ flex: 1, background: activeTab === 'participants' ? 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' : undefined }}
+                onClick={() => setActiveTab('participants')}
+              >
+                Participants
+              </button>
+            </div>
+
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              {activeTab === 'chat' ? (
+                <ChatPanel />
+              ) : (
+                <ParticipantList />
+              )}
+            </div>
+
+            {/* Host Quick Controls Panel - Visible to HOST ONLY */}
+            {isHost && (
+              <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Crown size={12} color="var(--warning)" />
+                  <span>HOST CONTROLS</span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleUserPlay}>
+                    <Play size={12} /> Play
+                  </button>
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleUserPause}>
+                    <Pause size={12} /> Pause
+                  </button>
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleManualSync}>
+                    <RefreshCw size={12} /> Sync
+                  </button>
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={() => getSocket().emit('room:toggle-lock')}>
+                    <Lock size={12} /> Lock
+                  </button>
+                </div>
+                <button
+                  className="btn btn-primary"
+                  style={{ width: '100%', fontSize: '0.8rem', padding: '6px', background: 'linear-gradient(135deg, #e50914 0%, #990000 100%)' }}
+                  onClick={() => setIsHostSettingsOpen(true)}
+                >
+                  <span>End Room</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      {/* Fixed Bottom Mobile Navigation Bar */}
-      <div className="mobile-bottom-tabbar">
-        <button
-          className={`mobile-tab-item ${activeTab === 'chat' ? '' : 'active'}`}
-          onClick={() => {
-            setActiveTab('chat');
-            stageRef.current?.scrollIntoView({ behavior: 'smooth' });
-          }}
-        >
-          <Tv size={18} />
-          <span>Video</span>
-        </button>
+        {/* Fixed Bottom Mobile Navigation Bar */}
+        <div className="mobile-bottom-tabbar">
+          <button
+            className={`mobile-tab-item ${activeTab === 'chat' ? '' : 'active'}`}
+            onClick={() => {
+              setActiveTab('chat');
+              stageRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }}
+          >
+            <Tv size={18} />
+            <span>Video</span>
+          </button>
 
-        <button
-          className={`mobile-tab-item ${activeTab === 'chat' ? 'active' : ''}`}
-          onClick={() => setActiveTab('chat')}
-        >
-          <MessageSquare size={18} />
-          <span>Chat</span>
-          <span className="mobile-tab-badge">3</span>
-        </button>
+          <button
+            className={`mobile-tab-item ${activeTab === 'chat' ? 'active' : ''}`}
+            onClick={() => setActiveTab('chat')}
+          >
+            <MessageSquare size={18} />
+            <span>Chat</span>
+            <span className="mobile-tab-badge">3</span>
+          </button>
 
-        <button
-          className={`mobile-tab-item ${activeTab === 'participants' ? 'active' : ''}`}
-          onClick={() => setActiveTab('participants')}
-        >
-          <Users size={18} />
-          <span>Participants</span>
-          <span className="mobile-tab-badge">{participants.length}</span>
-        </button>
+          <button
+            className={`mobile-tab-item ${activeTab === 'participants' ? 'active' : ''}`}
+            onClick={() => setActiveTab('participants')}
+          >
+            <Users size={18} />
+            <span>Participants</span>
+            <span className="mobile-tab-badge">{participants.length}</span>
+          </button>
 
-        <button
-          className="mobile-tab-item"
-          onClick={() => setIsHostSettingsOpen(true)}
-        >
-          <Settings size={18} />
-          <span>Settings</span>
-        </button>
-      </div>
+          <button
+            className="mobile-tab-item"
+            onClick={() => setIsHostSettingsOpen(true)}
+          >
+            <Settings size={18} />
+            <span>Settings</span>
+          </button>
+        </div>
 
-      {/* Responsive Watch Room Layout CSS Engine */}
-      <style>{`
+        {/* Responsive Watch Room Layout CSS Engine */}
+        <style>{`
         .room-layout-container {
           flex: 1;
           display: flex;
@@ -1161,54 +1149,54 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
         }
       `}</style>
 
-      {/* Select Video Modal */}
-      <SelectVideoModal
-        isOpen={isSelectVideoOpen}
-        onClose={() => setIsSelectVideoOpen(false)}
-        onSelectYouTube={handleSelectYouTube}
-        onOpenUploadModal={() => setIsUploadModalOpen(true)}
-      />
-
-      {/* Upload Modal */}
-      <UploadModal
-        isOpen={isUploadModalOpen}
-        onClose={() => setIsUploadModalOpen(false)}
-      />
-
-      {/* Floating Background Upload Progress Overlay (Visible to Host & Uploaders) */}
-      <BackgroundUploadOverlay
-        onOpenUploadModal={() => setIsUploadModalOpen(true)}
-      />
-
-      {/* Host Controls Modal */}
-      <HostControlsModal
-        isOpen={isHostSettingsOpen}
-        onClose={() => setIsHostSettingsOpen(false)}
-      />
-
-      {/* Developer Debug Console Modal */}
-      <DeveloperDebugModal
-        isOpen={isDebugOpen}
-        onClose={() => setIsDebugOpen(false)}
-        room={currentRoom}
-        currentUserId={user?.id}
-        authoritativeState={authoritativePlayback}
-        localTime={currentTime}
-        timeDelta={driftMs / 1000}
-      />
-      {/* Share Room Modal */}
-      {currentRoom && (
-        <ShareRoomModal
-          isOpen={isShareOpen}
-          onClose={() => setIsShareOpen(false)}
-          roomCode={currentRoom.roomCode}
-          roomName={currentRoom.name}
-          currentVideoTitle={currentRoom.currentVideo?.title}
+        {/* Select Video Modal */}
+        <SelectVideoModal
+          isOpen={isSelectVideoOpen}
+          onClose={() => setIsSelectVideoOpen(false)}
+          onSelectYouTube={handleSelectYouTube}
+          onOpenUploadModal={() => setIsUploadModalOpen(true)}
         />
-      )}
-    </div>
+
+        {/* Upload Modal */}
+        <UploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+        />
+
+        {/* Floating Background Upload Progress Overlay (Visible to Host & Uploaders) */}
+        <BackgroundUploadOverlay
+          onOpenUploadModal={() => setIsUploadModalOpen(true)}
+        />
+
+        {/* Host Controls Modal */}
+        <HostControlsModal
+          isOpen={isHostSettingsOpen}
+          onClose={() => setIsHostSettingsOpen(false)}
+        />
+
+        {/* Developer Debug Console Modal */}
+        <DeveloperDebugModal
+          isOpen={isDebugOpen}
+          onClose={() => setIsDebugOpen(false)}
+          room={currentRoom}
+          currentUserId={user?.id}
+          authoritativeState={authoritativePlayback}
+          localTime={currentTime}
+          timeDelta={driftMs / 1000}
+        />
+        {/* Share Room Modal */}
+        {currentRoom && (
+          <ShareRoomModal
+            isOpen={isShareOpen}
+            onClose={() => setIsShareOpen(false)}
+            roomCode={currentRoom.roomCode}
+            roomName={currentRoom.name}
+            currentVideoTitle={currentRoom.currentVideo?.title}
+          />
+        )}
+      </div>
     </WebRTCProvider>
-    </P2PVideoProvider>
+    </P2PVideoProvider >
   );
 };
 
