@@ -17,18 +17,25 @@ import { trackResponseBytes } from './utils/bandwidthTracker';
 
 const app = express();
 
-// Custom High-Resiliency CORS & Header Middleware (Must be FIRST before any other middleware)
+// High-Resiliency CORS & Header Middleware
+const corsMiddleware = cors({
+  origin: (origin, callback) => callback(null, true),
+  credentials: true,
+  methods: ['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Access-Control-Allow-Headers', 'Content-Range', 'Range'],
+  exposedHeaders: ['Content-Length', 'Content-Range', 'Accept-Ranges', 'Content-Type'],
+  optionsSuccessStatus: 200,
+});
+
+app.use(corsMiddleware);
+app.options('*', corsMiddleware);
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin) {
+  if (origin && !res.getHeader('Access-Control-Allow-Origin')) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-  } else {
-    res.setHeader('Access-Control-Allow-Origin', '*');
   }
-  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, DELETE, OPTIONS, PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With, Access-Control-Allow-Headers, Content-Type, Authorization, Origin, Accept, Range, Content-Range');
-  res.setHeader('Access-Control-Expose-Headers', 'Content-Length, Content-Range, Accept-Ranges, Content-Type');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
 
   if (req.method === 'OPTIONS') {
@@ -36,6 +43,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+
 
 
 // HTTP Response Compression Middleware (Compress JSON/Text API payloads)
