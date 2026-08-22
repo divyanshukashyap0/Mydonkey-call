@@ -349,20 +349,24 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
         const pc = pcsRef.current.get(fromUserId);
         if (pc) {
           if (pc.signalingState !== 'have-local-offer') {
-            console.warn(`[MovieTransfer] Ignoring answer from ${fromUserId} because signalingState is ${pc.signalingState}`);
             return;
           }
-          await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-          const pending = pendingCandidatesRef.current.get(fromUserId) || [];
-          pendingCandidatesRef.current.delete(fromUserId);
-          for (const cand of pending) {
-            await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+          try {
+            await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+            const pending = pendingCandidatesRef.current.get(fromUserId) || [];
+            pendingCandidatesRef.current.delete(fromUserId);
+            for (const cand of pending) {
+              await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(() => {});
+            }
+          } catch (sdpErr) {
+            // Silently ignore redundant or race-condition answer SDPs
           }
         }
       } catch (err) {
         console.error('P2P handleAnswer error:', err);
       }
     };
+
 
 
     const handleIce = async ({ fromUserId, candidate }: { fromUserId: string; candidate: any }) => {

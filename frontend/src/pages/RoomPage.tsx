@@ -367,19 +367,31 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
     }
   };
 
+  const lastVideoEndedTimeRef = useRef<number>(0);
+
   const handleVideoEnded = () => {
-    console.log('🔄 Video completed - Auto-replaying from 00:00 across all room devices');
-    if (playerRef.current) {
-      if (playerRef.current.seekTo) playerRef.current.seekTo(0);
-      if (playerRef.current.playVideo) playerRef.current.playVideo();
+    const now = Date.now();
+    if (now - lastVideoEndedTimeRef.current < 5000) {
+      return; // Debounce ended events within 5 seconds to prevent infinite replay loops
     }
-    const socket = getSocket();
-    socket.emit('playback:command', {
-      action: 'PLAY',
-      position: 0.0,
-      rate: authoritativePlayback?.playbackRate || 1.0,
-    });
+    lastVideoEndedTimeRef.current = now;
+
+    console.log('🔄 Video playback completed');
+    if (playerRef.current) {
+      if (playerRef.current.pauseVideo) playerRef.current.pauseVideo();
+    }
+
+    if (isHost) {
+      console.log('🔄 Host emitting auto-replay command from 00:00 across room');
+      const socket = getSocket();
+      socket.emit('playback:command', {
+        action: 'PLAY',
+        position: 0.0,
+        rate: authoritativePlayback?.playbackRate || 1.0,
+      });
+    }
   };
+
 
   const handleSelectYouTube = (youtubeUrl: string) => {
     const socket = getSocket();
