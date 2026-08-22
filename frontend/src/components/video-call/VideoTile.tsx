@@ -119,24 +119,39 @@ export const VideoTile: React.FC<VideoTileProps> = ({
         autoPlay
         playsInline
         muted={isLocal}
+        onLoadedMetadata={() => {
+          if (videoRef.current) {
+            videoRef.current.play().catch(() => {});
+          }
+        }}
         style={{
           width: '100%',
           height: '100%',
           objectFit: 'cover',
           transform: isLocal ? 'scaleX(-1)' : 'none',
-          display: !isVideoOff && stream ? 'block' : 'none',
+          display: !isVideoOff ? 'block' : 'none',
         }}
       />
 
       <AnimatePresence>
-        {(isVideoOff || !stream) && (
+        {(isVideoOff || (!stream && !isLocal)) && (
           <motion.div
             key="camera-off-avatar"
             initial={{ opacity: 0, scale: 0.85 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.85 }}
             transition={{ duration: 0.2 }}
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              background: 'linear-gradient(145deg, rgba(20, 26, 43, 0.95) 0%, rgba(10, 14, 24, 0.95) 100%)',
+              zIndex: 5,
+            }}
           >
             <div
               style={{
@@ -159,11 +174,12 @@ export const VideoTile: React.FC<VideoTileProps> = ({
               {displayName.charAt(0).toUpperCase()}
             </div>
             <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'rgba(255, 255, 255, 0.55)', letterSpacing: '0.3px' }}>
-              Cam Off
+              {isVideoOff ? 'Cam Off' : 'Connecting Video...'}
             </span>
           </motion.div>
         )}
       </AnimatePresence>
+
 
       {/* Sleek Glass Name Overlay & Badges */}
       <div
