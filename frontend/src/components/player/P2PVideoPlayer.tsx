@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useP2PVideo } from '../../context/P2PVideoContext';
+import { useWebRTCContext } from '../../context/WebRTCContext';
 import { PlayerController, getAspectRatioLabel } from './HLSPlayer';
-import { ShieldAlert, Radio, RefreshCw, WifiOff, UploadCloud } from 'lucide-react';
+import { LiveWebRTCPlayer } from './LiveWebRTCPlayer';
+import { ShieldAlert, Radio, RefreshCw, WifiOff, UploadCloud, Video } from 'lucide-react';
 
 interface P2PVideoPlayerProps {
   isHost: boolean;
@@ -21,6 +23,7 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
   onVideoDimensionsChange,
 }) => {
   const { localVideoObjectUrl, setLocalVideoFile, p2pStatus, p2pError, requestChunk, peerVideoMetadata, peerCount, reconnectP2P } = useP2PVideo();
+  const { broadcastMovieStream, remoteMovieStream } = useWebRTCContext();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [bufferProgress, setBufferProgress] = useState(0);
@@ -35,7 +38,41 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
     }
   }, [isHost, localVideoObjectUrl]);
 
-  // Peer Viewer: Receive progressive P2P video stream over WebRTC DataChannel
+  // Host: Capture stream on video play for 0ms Live WebRTC Broadcast
+  const handleHostVideoPlay = () => {
+    if (isHost && videoRef.current) {
+      const video = videoRef.current;
+      try {
+        const capturedStream = (video as any).captureStream
+          ? (video as any).captureStream()
+          : (video as any).mozCaptureStream
+          ? (video as any).mozCaptureStream()
+          : null;
+        if (capturedStream) {
+          console.log('⚡ [MovieBroadcast] Host captured movie MediaStream for Live WebRTC broadcast!');
+          broadcastMovieStream(capturedStream);
+        }
+      } catch (err) {
+        console.warn('Movie captureStream notice:', err);
+      }
+    }
+  };
+
+  // Peer Viewer: If live WebRTC movie stream is active from Host, display LiveWebRTCPlayer directly
+  if (!isHost && remoteMovieStream) {
+    return (
+      <LiveWebRTCPlayer
+        stream={remoteMovieStream}
+        videoTitle={videoTitle}
+        onReady={onReady}
+        onTimeUpdate={onTimeUpdate}
+        onEnded={onEnded}
+        onVideoDimensionsChange={onVideoDimensionsChange}
+      />
+    );
+  }
+
+  // Peer Viewer: Fallback to progressive P2P video stream over WebRTC DataChannel
   useEffect(() => {
     if (isHost) return;
 
@@ -190,7 +227,7 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
       <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.75rem' }}>
         <Radio size={14} color={p2pStatus === 'connected' || isHost ? 'var(--success)' : p2pStatus === 'error' ? 'var(--danger)' : 'var(--warning)'} className={p2pStatus === 'connecting' ? 'spin' : ''} />
         <span style={{ color: '#fff', fontWeight: 600 }}>
-          {isHost ? `P2P Provider (Sharing with ${peerCount} peers)` : p2pStatus === 'connected' ? `P2P Direct Stream (${bufferProgress}%)` : p2pStatus === 'connecting' ? `P2P Buffering (${bufferProgress}%)` : p2pStatus === 'error' ? 'P2P Connection Error' : 'P2P Standing By'}
+          {isHost ? `P2P Host (Sharing stream with ${peerCount} peers)` : p2pStatus === 'connected' ? `P2P Stream (${bufferProgress}%)` : p2pStatus === 'connecting' ? `P2P Buffering (${bufferProgress}%)` : p2pStatus === 'error' ? 'P2P Connection Error' : 'P2P Standing By'}
         </span>
       </div>
 
@@ -248,6 +285,7 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
           playsInline
           preload="auto"
           style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          onPlay={handleHostVideoPlay}
           onLoadedMetadata={() => {
             if (videoRef.current && videoRef.current.videoWidth && videoRef.current.videoHeight) {
               const w = videoRef.current.videoWidth;
@@ -273,4 +311,5 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
     </div>
   );
 };
+
 
