@@ -61,7 +61,46 @@ export const LiveWebRTCPlayer: React.FC<LiveWebRTCPlayerProps> = ({
     }
   }, [activeStream]);
 
-  // Controller Builder for player integration
+  // Anti-hang & anti-stall watchdog for live MediaStreams
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !activeStream) return;
+
+    let lastTime = video.currentTime;
+    let freezeCount = 0;
+
+    const watchdog = setInterval(() => {
+      if (!video.paused && activeStream.active) {
+        if (video.currentTime === lastTime) {
+          freezeCount++;
+          if (freezeCount >= 3) {
+            console.warn('[LiveWebRTCPlayer] Detected single frame stall, refreshing video play state...');
+            video.play().catch(() => {});
+            freezeCount = 0;
+          }
+        } else {
+          lastTime = video.currentTime;
+          freezeCount = 0;
+        }
+      }
+    }, 1000);
+
+    const handleStalled = () => {
+      console.warn('[LiveWebRTCPlayer] MediaStream stalled event, attempting recovery...');
+      if (!video.paused) {
+        video.play().catch(() => {});
+      }
+    };
+
+    video.addEventListener('stalled', handleStalled);
+    video.addEventListener('waiting', handleStalled);
+
+    return () => {
+      clearInterval(watchdog);
+      video.removeEventListener('stalled', handleStalled);
+      video.removeEventListener('waiting', handleStalled);
+    };
+  }, [activeStream]);
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !activeStream) return;

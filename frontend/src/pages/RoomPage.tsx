@@ -81,6 +81,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
   const stageRef = useRef<HTMLDivElement>(null);
   const { isFullscreen, showControls, toggleFullscreen } = useFullscreen(stageRef);
   const isProgrammaticActionRef = useRef(false);
+  const lastHardSeekTimestampRef = useRef<number>(0);
 
   const isHost = currentRoom?.hostId === user?.id;
   const canControl = currentRoom?.controlMode === 'EVERYONE' || isHost;
@@ -276,18 +277,23 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
         playerRef.current.pauseVideo();
       }
 
-      // 3-Tier Drift Correction Engine (For file & VOD streams)
+      // 3-Tier Anti-Hang Drift Correction Engine (For file & VOD streams)
       const absDrift = Math.abs(drift);
+      const now = Date.now();
+      const timeSinceLastSeek = now - lastHardSeekTimestampRef.current;
 
-      if (absDrift > 1500) {
+      // Hard seek threshold raised to 3500ms + 4000ms minimum cooldown guard to eliminate single-frame seek loops
+      if (absDrift > 3500 && timeSinceLastSeek > 4000) {
+        lastHardSeekTimestampRef.current = now;
         isProgrammaticActionRef.current = true;
         playerRef.current.seekTo(expectedPosition, true);
         playerRef.current.setPlaybackRate(authoritativePlayback.playbackRate);
-      } else if (absDrift >= 150) {
+      } else if (absDrift >= 200) {
+        // Smooth micro-adjustment via playbackRate (zero seeking = zero frame stuttering)
         const adjustedRate =
           drift > 0
-            ? authoritativePlayback.playbackRate * 1.05
-            : authoritativePlayback.playbackRate * 0.95;
+            ? Math.min(1.25, authoritativePlayback.playbackRate * 1.08)
+            : Math.max(0.75, authoritativePlayback.playbackRate * 0.92);
         playerRef.current.setPlaybackRate(adjustedRate);
       } else {
         playerRef.current.setPlaybackRate(authoritativePlayback.playbackRate);
