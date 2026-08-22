@@ -75,20 +75,6 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
     }
   };
 
-  // Peer Viewer: If live WebRTC movie stream is active from Host, display LiveWebRTCPlayer directly
-  if (!isHost && remoteMovieStream) {
-    return (
-      <LiveWebRTCPlayer
-        stream={remoteMovieStream}
-        videoTitle={videoTitle}
-        onReady={onReady}
-        onTimeUpdate={onTimeUpdate}
-        onEnded={onEnded}
-        onVideoDimensionsChange={onVideoDimensionsChange}
-      />
-    );
-  }
-
   // Peer Viewer: Fallback to progressive P2P video stream over WebRTC DataChannel
   useEffect(() => {
     if (isHost) return;
@@ -237,6 +223,20 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
 
     if (onReady) onReady(video, controller);
   }, [streamUrl]);
+
+  // Peer Viewer: If live WebRTC movie stream is active from Host, display LiveWebRTCPlayer directly
+  if (!isHost && remoteMovieStream) {
+    return (
+      <LiveWebRTCPlayer
+        stream={remoteMovieStream}
+        videoTitle={videoTitle}
+        onReady={onReady}
+        onTimeUpdate={onTimeUpdate}
+        onEnded={onEnded}
+        onVideoDimensionsChange={onVideoDimensionsChange}
+      />
+    );
+  }
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative', background: '#000', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>

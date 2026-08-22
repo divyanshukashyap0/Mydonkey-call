@@ -411,11 +411,13 @@ export const AdminPage: React.FC = () => {
                         </div>
                       </td>
                       <td style={{ padding: '14px 16px' }} className="mono">
-                        {v.manifestUrl ? (
+                        {v.manifestUrl && v.manifestUrl.startsWith('http') ? (
                           <a href={v.manifestUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.78rem' }}>
                             <span style={{ maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.manifestUrl}</span>
                             <ExternalLink size={12} />
                           </a>
+                        ) : v.manifestUrl && v.manifestUrl.startsWith('p2p://') ? (
+                          <span style={{ color: '#818cf8', fontWeight: 600, fontSize: '0.78rem' }}>P2P Stream</span>
                         ) : (
                           <span style={{ color: 'var(--text-dim)', fontSize: '0.78rem' }}>Direct CDN</span>
                         )}
