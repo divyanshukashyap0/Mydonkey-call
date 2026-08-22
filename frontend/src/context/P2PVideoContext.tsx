@@ -83,8 +83,16 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
         }
       });
 
+      const metadata = {
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type || 'video/mp4',
+        updatedAt: Date.now(),
+      };
+      setPeerVideoMetadata(metadata);
       const socket = getSocket();
-      socket.emit('p2p-video:provider-ready', { videoId: file.name });
+      socket.emit('video:set-metadata', { metadata });
+      socket.emit('p2p-video:provider-ready', { videoId: file.name, metadata });
     } else {
       setP2pStatus('idle');
     }
@@ -444,7 +452,28 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
     const handleUserJoined = () => {
       if (localFileRef.current) {
         console.log('[MovieTransfer] New user joined room - re-broadcasting provider-ready event');
-        socket.emit('p2p-video:provider-ready', { videoId: localFileRef.current.name });
+        const file = localFileRef.current;
+        const metadata = {
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type || 'video/mp4',
+          updatedAt: Date.now(),
+        };
+        socket.emit('p2p-video:provider-ready', { videoId: file.name, metadata });
+      }
+    };
+
+    const handleMetadataSync = ({ metadata }: { metadata: any }) => {
+      if (metadata) {
+        console.log('[MovieTransfer] Received live video metadata from Render backend:', metadata);
+        setPeerVideoMetadata(metadata);
+      }
+    };
+
+    const handleRoomJoined = (payload: any) => {
+      if (payload?.videoMetadata) {
+        console.log('[MovieTransfer] Received stored live video metadata from Render room state:', payload.videoMetadata);
+        setPeerVideoMetadata(payload.videoMetadata);
       }
     };
 
@@ -452,6 +481,8 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
     socket.on('p2p-video:answer', handleAnswer);
     socket.on('p2p-video:ice', handleIce);
     socket.on('p2p-video:provider-ready', handleProviderReady);
+    socket.on('video:metadata-sync', handleMetadataSync);
+    socket.on('room:joined', handleRoomJoined);
     socket.on('room:user-left', handleUserLeft);
     socket.on('room:user-joined', handleUserJoined);
 
@@ -464,6 +495,8 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
       socket.off('p2p-video:answer', handleAnswer);
       socket.off('p2p-video:ice', handleIce);
       socket.off('p2p-video:provider-ready', handleProviderReady);
+      socket.off('video:metadata-sync', handleMetadataSync);
+      socket.off('room:joined', handleRoomJoined);
       socket.off('room:user-left', handleUserLeft);
       socket.off('room:user-joined', handleUserJoined);
     };

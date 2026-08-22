@@ -102,7 +102,8 @@ export interface ServerToClientEvents {
   'p2p-video:offer': (data: { fromUserId: string; sdp: any }) => void;
   'p2p-video:answer': (data: { fromUserId: string; sdp: any }) => void;
   'p2p-video:ice': (data: { fromUserId: string; candidate: any }) => void;
-  'p2p-video:provider-ready': (data: { providerId: string; videoId: string }) => void;
+  'p2p-video:provider-ready': (data: { providerId: string; videoId: string; metadata?: any }) => void;
+  'video:metadata-sync': (data: { metadata: any }) => void;
   'participant:state-changed': (data: { userId: string; isMuted: boolean; isVideoOff: boolean }) => void;
   'host:force-mute': () => void;
   'error:message': (data: { message: string }) => void;
@@ -113,7 +114,8 @@ export interface ClientToServerEvents {
   'room:leave': () => void;
   'playback:command': (data: { action: 'PLAY' | 'PAUSED' | 'SEEK' | 'RATE'; position: number; rate?: number; sequenceNumber?: number }) => void;
   'playback:requestSync': () => void;
-  'video:change': (data: { videoId: string | null; youtubeUrl?: string }) => void;
+  'video:change': (data: { videoId: string | null; youtubeUrl?: string; metadata?: any }) => void;
+  'video:set-metadata': (data: { metadata: any }) => void;
   'chat:send': (data: { content: string }) => void;
   'webrtc:offer': (data: { targetUserId: string; sdp: any }) => void;
   'webrtc:answer': (data: { targetUserId: string; sdp: any }) => void;
@@ -125,7 +127,7 @@ export interface ClientToServerEvents {
   'p2p-video:offer': (data: { targetUserId: string; sdp: any }) => void;
   'p2p-video:answer': (data: { targetUserId: string; sdp: any }) => void;
   'p2p-video:ice': (data: { targetUserId: string; candidate: any }) => void;
-  'p2p-video:provider-ready': (data: { videoId: string }) => void;
+  'p2p-video:provider-ready': (data: { videoId: string; metadata?: any }) => void;
   'participant:toggle-media': (data: { isMuted?: boolean; isVideoOff?: boolean }) => void;
   'host:mute-participant': (data: { targetUserId: string; isMuted?: boolean }) => void;
   'host:mute-all': () => void;

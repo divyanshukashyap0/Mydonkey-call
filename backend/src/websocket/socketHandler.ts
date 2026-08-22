@@ -25,6 +25,21 @@ interface AuthenticatedSocket extends Socket {
 // In-memory rate limiting map for chat messages: userId -> array of message timestamps
 const userChatTimestamps = new Map<string, number[]>();
 
+// In-Memory Live Room Video Metadata Store (Stored on Render backend till room live)
+export interface ActiveRoomVideoMetadata {
+  fileName?: string;
+  fileSize?: number;
+  mimeType?: string;
+  duration?: number;
+  videoId?: string;
+  sourceType?: string;
+  youtubeUrl?: string;
+  youtubeVideoId?: string;
+  title?: string;
+  updatedAt?: number;
+}
+const activeRoomVideoMetadataMap = new Map<string, ActiveRoomVideoMetadata>();
+
 function sanitizeHTML(str: string): string {
   return str.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
@@ -280,6 +295,7 @@ export function setupSocketIO(io: SocketIOServer) {
           participants: updatedParticipants.map((p) => ({ ...p, joinedAt: safeISO(p.joinedAt) })) as any,
           authoritativeState,
           chatHistory,
+          videoMetadata: activeRoomVideoMetadataMap.get(normalizedCode) || null,
         });
 
         socket.to(roomSocketName).emit('room:user-joined', {
@@ -577,6 +593,18 @@ export function setupSocketIO(io: SocketIOServer) {
         });
 
         if (video) {
+          activeRoomVideoMetadataMap.set(roomCode, {
+            fileName: video.originalFileName || video.title,
+            fileSize: video.fileSize ? Number(video.fileSize) : undefined,
+            mimeType: video.mimeType || undefined,
+            duration: video.duration || undefined,
+            videoId: video.id,
+            sourceType: video.sourceType,
+            youtubeUrl: video.youtubeUrl || undefined,
+            youtubeVideoId: video.youtubeVideoId || undefined,
+            title: video.title,
+            updatedAt: Date.now(),
+          });
           syncVideoMetadataToFirestore(video).catch(() => {});
         }
         syncRoomToFirestore(updatedRoom).catch(() => {});
@@ -585,6 +613,17 @@ export function setupSocketIO(io: SocketIOServer) {
         console.error('Video Change error:', err);
         socket.emit('error:message', { message: 'Failed to change room video' });
       }
+    });
+
+    socket.on('video:set-metadata', ({ metadata }) => {
+      if (!socket.currentRoomCode || !metadata) return;
+      const roomCode = socket.currentRoomCode;
+      activeRoomVideoMetadataMap.set(roomCode, {
+        ...metadata,
+        updatedAt: Date.now(),
+      });
+      io.to(`room:${roomCode}`).emit('video:metadata-sync', { metadata });
+      console.log(`[RenderBackend] 📹 Stored active video metadata for room ${roomCode}:`, metadata.fileName || metadata.title);
     });
 
     socket.on('upload:progress', ({ progress, fileName }) => {
@@ -876,11 +915,21 @@ export function setupSocketIO(io: SocketIOServer) {
       });
     });
 
-    socket.on('p2p-video:provider-ready', ({ videoId }) => {
+    socket.on('p2p-video:provider-ready', ({ videoId, metadata }) => {
       if (!socket.user || !socket.currentRoomCode) return;
-      socket.to(`room:${socket.currentRoomCode}`).emit('p2p-video:provider-ready', {
+      const roomCode = socket.currentRoomCode;
+      if (metadata) {
+        activeRoomVideoMetadataMap.set(roomCode, {
+          ...metadata,
+          videoId: videoId || metadata.fileName,
+          updatedAt: Date.now(),
+        });
+      }
+      const currentMeta = metadata || activeRoomVideoMetadataMap.get(roomCode);
+      socket.to(`room:${roomCode}`).emit('p2p-video:provider-ready', {
         providerId: socket.user.id,
         videoId,
+        metadata: currentMeta,
       });
     });
 
@@ -999,8 +1048,9 @@ export function setupSocketIO(io: SocketIOServer) {
         }
 
         io.to(roomSocketName).emit('room:ended');
+        activeRoomVideoMetadataMap.delete(roomCode);
         await prisma.room.delete({ where: { id: room.id } }).catch(() => {});
-        console.log(`🚪 Room ${roomCode} explicitly ended and purged from DB by host ${socket.user.displayName}.`);
+        console.log(`🚪 Room ${roomCode} explicitly ended, active video metadata deleted from Render memory, and purged from DB by host ${socket.user.displayName}.`);
       } catch (err) {
         console.error('room:end-room error:', err);
       }

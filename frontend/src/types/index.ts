@@ -133,7 +133,8 @@ export interface ServerToClientEvents {
   'p2p-video:offer': (data: { fromUserId: string; sdp: any }) => void;
   'p2p-video:answer': (data: { fromUserId: string; sdp: any }) => void;
   'p2p-video:ice': (data: { fromUserId: string; candidate: any }) => void;
-  'p2p-video:provider-ready': (data: { providerId: string; videoId: string }) => void;
+  'p2p-video:provider-ready': (data: { providerId: string; videoId: string; metadata?: any }) => void;
+  'video:metadata-sync': (data: { metadata: any }) => void;
   'participant:state-changed': (data: { userId: string; isMuted: boolean; isVideoOff: boolean; isReady?: boolean; role?: Role; connectionQuality?: ConnectionQuality }) => void;
   'room:countdown-tick': (data: { secondsRemaining: number }) => void;
   'room:countdown-cancelled': (data: { reason: string }) => void;
@@ -152,7 +153,8 @@ export interface ClientToServerEvents {
   'playback:command': (data: { action: 'PLAY' | 'PAUSE' | 'SEEK' | 'RATE'; position: number; rate?: number; sequenceNumber?: number }) => void;
   'playback:requestSync': () => void;
   'playback:telemetry': (data: { position: number; state?: string }) => void;
-  'video:change': (data: { youtubeUrl?: string; videoId?: string }) => void;
+  'video:change': (data: { youtubeUrl?: string; videoId?: string; metadata?: any }) => void;
+  'video:set-metadata': (data: { metadata: any }) => void;
   'chat:send': (data: { content: string }) => void;
   'room:toggle-lock': () => void;
   'room:set-control-mode': (data: { controlMode: ControlMode }) => void;
@@ -175,7 +177,7 @@ export interface ClientToServerEvents {
   'p2p-video:offer': (data: { targetUserId: string; sdp: any }) => void;
   'p2p-video:answer': (data: { targetUserId: string; sdp: any }) => void;
   'p2p-video:ice': (data: { targetUserId: string; candidate: any }) => void;
-  'p2p-video:provider-ready': (data: { videoId: string }) => void;
+  'p2p-video:provider-ready': (data: { videoId: string; metadata?: any }) => void;
   'participant:toggle-media': (data: { isMuted?: boolean; isVideoOff?: boolean }) => void;
   'host:mute-participant': (data: { targetUserId: string; isMuted?: boolean }) => void;
   'host:mute-all': () => void;
