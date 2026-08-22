@@ -235,8 +235,13 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
               onTimeUpdate(videoRef.current.currentTime, videoRef.current.duration || 0);
             }
           }}
-          onEnded={onEnded}
+          onEnded={() => {
+            if ((isHost || bufferProgress >= 98) && onEnded) {
+              onEnded();
+            }
+          }}
         />
+
       )}
     </div>
   );
