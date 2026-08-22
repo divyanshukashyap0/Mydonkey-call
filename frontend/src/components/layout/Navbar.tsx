@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Tv, LogOut, User as UserIcon, Plus, DoorOpen, LogIn, Users, History, Shield, Menu, X, Settings, Lock, Unlock, MessageSquare } from 'lucide-react';
+import { Tv, LogOut, User as UserIcon, Plus, DoorOpen, LogIn, Users, History, Shield, Menu, X, Settings, Lock, Unlock, MessageSquare, Share2 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore';
 import { useRoomStore } from '../../store/useRoomStore';
 import { getSocket } from '../../services/socket';
 import { AuthModal } from '../auth/AuthModal';
 import { SocialDashboardModal } from '../social/SocialDashboardModal';
+import { ShareRoomModal } from '../room/ShareRoomModal';
 
 interface NavbarProps {
   onOpenCreateModal?: () => void;
@@ -23,8 +24,10 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
   const { showToast } = useToast();
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [isSocialOpen, setIsSocialOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+
 
   const handleCopyCode = (code: string) => {
     navigator.clipboard.writeText(code);
@@ -86,6 +89,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
         <div className="desktop-nav" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {currentRoom ? (
             <>
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => setIsShareModalOpen(true)}
+                style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)', gap: '6px' }}
+              >
+                <Share2 size={16} />
+                <span>Share Link</span>
+              </button>
+
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
@@ -116,6 +128,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
                 <span>Leave Room</span>
               </button>
             </>
+
           ) : (
             <>
               <Link to="/history" className="btn btn-secondary btn-sm">
@@ -182,16 +195,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
 
         {/* Mobile Header Right Bar (Screens < 991px) */}
         <div className="mobile-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            className="btn btn-secondary btn-sm"
-            style={{ padding: '4px 10px', fontSize: '0.78rem', gap: '4px' }}
-            onClick={() => {
-              if (currentRoom) handleCopyCode(currentRoom.roomCode);
-            }}
-          >
-            <Users size={14} />
-            <span>Invite</span>
-          </button>
+          {currentRoom && (
+            <button
+              className="btn btn-primary btn-sm"
+              style={{ padding: '4px 10px', fontSize: '0.78rem', gap: '4px', background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' }}
+              onClick={() => setIsShareModalOpen(true)}
+            >
+              <Share2 size={14} />
+              <span>Share Link</span>
+            </button>
+          )}
 
           <button
             className="btn btn-secondary btn-icon"
@@ -295,6 +308,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
 
             {currentRoom ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsShareModalOpen(true);
+                  }}
+                  style={{ width: '100%', background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' }}
+                >
+                  <Share2 size={18} />
+                  <span>Share Watch Party Link</span>
+                </button>
                 <div className="room-code-badge" onClick={() => handleCopyCode(currentRoom.roomCode)} style={{ justifyContent: 'center', padding: '10px' }}>
                   <span>ROOM CODE: {currentRoom.roomCode} (Tap to Copy)</span>
                 </div>
@@ -392,7 +416,17 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
 
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
       <SocialDashboardModal isOpen={isSocialOpen} onClose={() => setIsSocialOpen(false)} />
+      {currentRoom && (
+        <ShareRoomModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          roomCode={currentRoom.roomCode}
+          roomName={currentRoom.name}
+          currentVideoTitle={currentRoom.currentVideo?.title}
+        />
+      )}
     </>
   );
 };
+
 

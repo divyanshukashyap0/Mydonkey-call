@@ -8,7 +8,9 @@ import { VideoGrid } from '../components/video-call/VideoGrid';
 import { FloatingCallOverlay } from '../components/video-call/FloatingCallOverlay';
 import { ChatPanel } from '../components/chat/ChatPanel';
 import { HostControlsModal } from '../components/room/HostControlsModal';
+import { ShareRoomModal } from '../components/room/ShareRoomModal';
 import { WebRTCProvider } from '../context/WebRTCContext';
+
 import { P2PVideoProvider } from '../context/P2PVideoContext';
 import { HLSPlayer } from '../components/player/HLSPlayer';
 import { P2PVideoPlayer } from '../components/player/P2PVideoPlayer';
@@ -57,7 +59,9 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
   const [isSelectVideoOpen, setIsSelectVideoOpen] = useState(false);
   const [isHostSettingsOpen, setIsHostSettingsOpen] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [isDebugOpen, setIsDebugOpen] = useState(false);
+
 
   // Fullscreen Floating Panels
   const [showFloatingChat, setShowFloatingChat] = useState(false);
@@ -514,14 +518,12 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
             <button
               className="btn btn-primary"
               style={{ width: '100%', fontSize: '0.82rem', padding: '8px 12px', background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' }}
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                showToast('Watch Party link copied! Share with friends.', 'success');
-              }}
+              onClick={() => setIsShareOpen(true)}
             >
               <UserPlus size={14} />
               <span>Invite Friends</span>
             </button>
+
           </div>
 
           {/* Navigation Items */}
@@ -1182,10 +1184,21 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
         localTime={currentTime}
         timeDelta={driftMs / 1000}
       />
+      {/* Share Room Modal */}
+      {currentRoom && (
+        <ShareRoomModal
+          isOpen={isShareOpen}
+          onClose={() => setIsShareOpen(false)}
+          roomCode={currentRoom.roomCode}
+          roomName={currentRoom.name}
+          currentVideoTitle={currentRoom.currentVideo?.title}
+        />
+      )}
     </div>
     </WebRTCProvider>
     </P2PVideoProvider>
   );
 };
+
 
 

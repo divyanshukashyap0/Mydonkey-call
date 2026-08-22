@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DoorOpen, ArrowRight } from 'lucide-react';
 import { Navbar } from '../components/layout/Navbar';
 import { api } from '../services/api';
@@ -8,9 +8,19 @@ import { pageEntrance } from '../animations';
 
 export const JoinPage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const codeParam = searchParams.get('code') || searchParams.get('roomCode');
+    if (codeParam && codeParam.trim().length === 6) {
+      const clean = codeParam.trim().toUpperCase();
+      setCode(clean);
+      navigate(`/room/${clean}`);
+    }
+  }, [searchParams, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,6 +40,7 @@ export const JoinPage: React.FC = () => {
       setLoading(false);
     }
   };
+
 
   return (
     <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: 'var(--bg-dark)' }}>
