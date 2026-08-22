@@ -377,4 +377,66 @@ body {
   }
 }
 
+/* Universal Video Player Screen Scaling Engine */
+.video-stage {
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  position: relative !important;
+  background: #000 !important;
+  overflow: hidden !important;
+}
+
+.video-stage video,
+.video-stage iframe,
+.video-stage iframe[src*="youtube"],
+.video-stage iframe[src*="youtube-nocookie"] {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  object-fit: contain !important;
+}
+
+/* Mobile & Small Screens (< 768px) */
+@media (max-width: 767px) {
+  .video-stage {
+    width: 100% !important;
+    min-height: 200px !important;
+    max-height: 52vh !important;
+    aspect-ratio: var(--video-aspect-ratio, 16/9) !important;
+  }
+}
+
+/* Tablet Screens (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .video-stage {
+    width: 100% !important;
+    min-height: 320px !important;
+    max-height: 58vh !important;
+    aspect-ratio: var(--video-aspect-ratio, 16/9) !important;
+  }
+}
+
+/* Desktop & Laptop Screens (>= 1024px) */
+@media (min-width: 1024px) {
+  .video-stage {
+    flex: 1 !important;
+    width: 100% !important;
+    min-height: 300px !important;
+    max-height: calc(100vh - 160px) !important;
+  }
+}
+
+/* Mobile Landscape Orientation */
+@media (max-height: 500px) and (orientation: landscape) {
+  .video-stage {
+    height: 86vh !important;
+    max-height: 86vh !important;
+    width: 100% !important;
+  }
+}
+
 

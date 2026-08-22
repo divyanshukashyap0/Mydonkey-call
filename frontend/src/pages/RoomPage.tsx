@@ -686,7 +686,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
             {/* Center: Video Stage & Call Controls */}
             <div className="video-section">
               {/* Main Video Stage (Supports Fullscreen API) */}
-              <div ref={stageRef} className="glass-panel video-stage">
+              <div ref={stageRef} className="glass-panel video-stage" style={{ '--video-aspect-ratio': videoAspectRatio } as any}>
                 {/* Video Player Box */}
                 <div style={{ flex: 1, width: '100%', height: '100%', position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', background: '#000' }}>
                   {currentVideo?.sourceType === 'YOUTUBE' && currentVideo.youtubeVideoId ? (
