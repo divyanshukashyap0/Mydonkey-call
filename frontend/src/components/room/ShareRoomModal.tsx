@@ -98,41 +98,10 @@ export const ShareRoomModal: React.FC<ShareRoomModalProps> = ({
           <span>Share</span>
         </button>
 
-        {/* Shareable Link Input Box */}
-        <div>
-          <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, letterSpacing: '0.5px', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>
-            Direct Shareable URL
-          </label>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <input
-                type="text"
-                readOnly
-                value={shareUrl}
-                className="input mono"
-                style={{ fontSize: '0.82rem', paddingRight: '36px', background: 'rgba(0,0,0,0.4)', color: 'var(--accent)' }}
-                onClick={handleCopyLink}
-              />
-              <Link2 size={16} color="var(--text-muted)" style={{ position: 'absolute', right: '12px' }} />
-            </div>
-            <button className="btn btn-secondary" onClick={handleCopyLink} style={{ whiteSpace: 'nowrap', gap: '6px' }}>
-              {copiedLink ? <Check size={16} color="var(--success)" /> : <Copy size={16} />}
-              <span>{copiedLink ? 'Copied!' : 'Copy Link'}</span>
-            </button>
-          </div>
-        </div>
 
-        {/* Room Code Quick Box */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--bg-input)', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <div>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Room Code</span>
-            <span className="mono" style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--success)' }}>{normalizedCode}</span>
-          </div>
-          <button className="btn btn-secondary btn-sm" onClick={handleCopyCode} style={{ gap: '6px' }}>
-            {copiedCode ? <Check size={14} color="var(--success)" /> : <Copy size={14} />}
-            <span>{copiedCode ? 'Copied' : 'Copy Code'}</span>
-          </button>
-        </div>
+
+
+
 
         {/* Social Sharing Quick Buttons */}
         <div>
