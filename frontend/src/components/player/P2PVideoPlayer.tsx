@@ -64,8 +64,8 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
     }
   }, [isHost, localVideoObjectUrl]);
 
-  // Host: Capture stream on video play for Live WebRTC MediaStream Broadcast
-  const handleHostVideoPlay = () => {
+  // Host: Capture stream on video metadata load & play for Live WebRTC MediaStream Broadcast
+  const handleHostVideoInit = () => {
     if (isHost && videoRef.current) {
       const capturedStream = getCapturedMovieStream(videoRef.current);
       if (capturedStream) {
@@ -302,8 +302,9 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
           playsInline
           preload="auto"
           style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-          onPlay={handleHostVideoPlay}
+          onPlay={handleHostVideoInit}
           onLoadedMetadata={() => {
+            handleHostVideoInit();
             if (videoRef.current && videoRef.current.videoWidth && videoRef.current.videoHeight) {
               const w = videoRef.current.videoWidth;
               const h = videoRef.current.videoHeight;
