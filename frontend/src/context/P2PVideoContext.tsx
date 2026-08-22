@@ -254,6 +254,13 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
     try {
       setP2pStatus('connecting');
 
+      // Close existing connection if reconnecting
+      const existingPc = pcsRef.current.get(providerUserId);
+      if (existingPc) {
+        existingPc.close();
+        pcsRef.current.delete(providerUserId);
+      }
+
       const pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
       pcsRef.current.set(providerUserId, pc);
 
@@ -291,6 +298,15 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
     const handleOffer = async ({ fromUserId, sdp }: { fromUserId: string; sdp: any }) => {
       try {
         let pc = pcsRef.current.get(fromUserId);
+
+        // Recreate connection if existing peer connection is closed or in wrong signaling state
+        if (pc && (pc.signalingState !== 'stable' || pc.connectionState === 'closed')) {
+          console.warn(`[MovieTransfer] Recreating PC for ${fromUserId} due to signaling state ${pc.signalingState}`);
+          pc.close();
+          pcsRef.current.delete(fromUserId);
+          pc = undefined;
+        }
+
         if (!pc) {
           pc = new RTCPeerConnection({ iceServers: iceServersRef.current });
           pcsRef.current.set(fromUserId, pc);
@@ -304,6 +320,11 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
           pc.ondatachannel = (event) => {
             setupHostDataChannel(fromUserId, event.channel);
           };
+        }
+
+        if (pc.signalingState !== 'stable') {
+          console.warn(`[MovieTransfer] Cannot process offer from ${fromUserId} in signalingState ${pc.signalingState}`);
+          return;
         }
 
         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
@@ -327,6 +348,10 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
       try {
         const pc = pcsRef.current.get(fromUserId);
         if (pc) {
+          if (pc.signalingState !== 'have-local-offer') {
+            console.warn(`[MovieTransfer] Ignoring answer from ${fromUserId} because signalingState is ${pc.signalingState}`);
+            return;
+          }
           await pc.setRemoteDescription(new RTCSessionDescription(sdp));
           const pending = pendingCandidatesRef.current.get(fromUserId) || [];
           pendingCandidatesRef.current.delete(fromUserId);
@@ -338,6 +363,7 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
         console.error('P2P handleAnswer error:', err);
       }
     };
+
 
     const handleIce = async ({ fromUserId, candidate }: { fromUserId: string; candidate: any }) => {
       try {
