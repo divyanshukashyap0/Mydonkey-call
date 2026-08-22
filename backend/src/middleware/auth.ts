@@ -15,12 +15,19 @@ export interface AuthRequest extends Request {
 }
 
 export async function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : req.cookies?.token;
 
   if (!token) {
     return res.status(401).json({ error: 'Authentication token missing' });
   }
+
 
   let userId: string | null = null;
   let displayName = 'User';
