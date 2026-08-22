@@ -95,6 +95,9 @@ export interface ServerToClientEvents {
   'webrtc:offer': (data: { fromUserId: string; sdp: any }) => void;
   'webrtc:answer': (data: { fromUserId: string; sdp: any }) => void;
   'webrtc:ice': (data: { fromUserId: string; candidate: any }) => void;
+  'movie-stream:offer': (data: { fromUserId: string; sdp: any }) => void;
+  'movie-stream:answer': (data: { fromUserId: string; sdp: any }) => void;
+  'movie-stream:ice': (data: { fromUserId: string; candidate: any }) => void;
   'p2p-video:offer': (data: { fromUserId: string; sdp: any }) => void;
   'p2p-video:answer': (data: { fromUserId: string; sdp: any }) => void;
   'p2p-video:ice': (data: { fromUserId: string; candidate: any }) => void;
@@ -114,6 +117,9 @@ export interface ClientToServerEvents {
   'webrtc:offer': (data: { targetUserId: string; sdp: any }) => void;
   'webrtc:answer': (data: { targetUserId: string; sdp: any }) => void;
   'webrtc:ice': (data: { targetUserId: string; candidate: any }) => void;
+  'movie-stream:offer': (data: { targetUserId: string; sdp: any }) => void;
+  'movie-stream:answer': (data: { targetUserId: string; sdp: any }) => void;
+  'movie-stream:ice': (data: { targetUserId: string; candidate: any }) => void;
   'p2p-video:offer': (data: { targetUserId: string; sdp: any }) => void;
   'p2p-video:answer': (data: { targetUserId: string; sdp: any }) => void;
   'p2p-video:ice': (data: { targetUserId: string; candidate: any }) => void;

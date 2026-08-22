@@ -5,11 +5,6 @@ import { api } from '../services/api';
 export interface WebRTCContextType {
   localStream: MediaStream | null;
   remoteStreams: Map<string, MediaStream>;
-  movieStream: MediaStream | null;
-  remoteMovieStream: MediaStream | null;
-  isMovieBroadcasting: boolean;
-  broadcastMovieStream: (stream: MediaStream | null) => void;
-  stopMovieBroadcast: () => void;
   isMuted: boolean;
   isVideoOff: boolean;
   mediaError: string | null;
@@ -31,16 +26,12 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
 }) => {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
-  const [movieStream, setMovieStream] = useState<MediaStream | null>(null);
-  const [remoteMovieStream, setRemoteMovieStream] = useState<MediaStream | null>(null);
-  const [isMovieBroadcasting, setIsMovieBroadcasting] = useState(false);
   const [isMuted, setIsMuted] = useState(true); // Default muted for everyone
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [participantVolumes, setParticipantVolumes] = useState<Record<string, number>>({});
 
   const pcsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
-  const movieSendersRef = useRef<Map<string, RTCRtpSender[]>>(new Map());
   const pendingCandidatesRef = useRef<Map<string, RTCIceCandidateInit[]>>(new Map());
   const isMakingOfferRef = useRef<Map<string, boolean>>(new Map());
   const ignoreOfferRef = useRef<Map<string, boolean>>(new Map());
@@ -53,51 +44,6 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
 
   const localStreamRef = useRef<MediaStream | null>(null);
   localStreamRef.current = localStream;
-
-  const movieStreamRef = useRef<MediaStream | null>(null);
-  movieStreamRef.current = movieStream;
-
-  // Broadcast movie MediaStream to all WebRTC peers
-  const broadcastMovieStream = (stream: MediaStream | null) => {
-    if (movieStreamRef.current && movieStreamRef.current !== stream) {
-      movieStreamRef.current.getTracks().forEach((t) => t.stop());
-    }
-
-    setMovieStream(stream);
-    movieStreamRef.current = stream;
-    setIsMovieBroadcasting(!!stream);
-
-    pcsRef.current.forEach((pc, targetUserId) => {
-      // Remove previous movie senders
-      const oldSenders = movieSendersRef.current.get(targetUserId) || [];
-      oldSenders.forEach((sender) => {
-        try { pc.removeTrack(sender); } catch (e) {}
-      });
-      movieSendersRef.current.delete(targetUserId);
-
-      if (stream) {
-        const newSenders: RTCRtpSender[] = [];
-        stream.getTracks().forEach((track) => {
-          try {
-            const sender = pc.addTrack(track, stream);
-            newSenders.push(sender);
-          } catch (e) {
-            console.warn(`[MovieBroadcast] Error adding track to peer ${targetUserId}:`, e);
-          }
-        });
-        movieSendersRef.current.set(targetUserId, newSenders);
-
-        // Renegotiate offer with peer
-        if (pc.signalingState === 'stable') {
-          connectToPeer(targetUserId);
-        }
-      }
-    });
-  };
-
-  const stopMovieBroadcast = () => {
-    broadcastMovieStream(null);
-  };
 
   // Initialize camera and microphone (Mic muted by default)
   useEffect(() => {
@@ -149,9 +95,6 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
       pendingCandidatesRef.current.clear();
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (movieStreamRef.current) {
-        movieStreamRef.current.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
@@ -233,18 +176,6 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
         });
       }
 
-      // Re-attach active movie stream tracks if broadcasting
-      if (movieStreamRef.current) {
-        const existingSenders = existingPc.getSenders();
-        movieStreamRef.current.getTracks().forEach((track) => {
-          if (!existingSenders.some((s) => s.track === track)) {
-            try {
-              existingPc.addTrack(track, movieStreamRef.current!);
-            } catch (e) {}
-          }
-        });
-      }
-
       return existingPc;
     }
 
@@ -255,12 +186,6 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
     if (activeStream) {
       const sortedTracks = activeStream.getTracks().sort((a, b) => a.kind.localeCompare(b.kind));
       sortedTracks.forEach((track) => pc.addTrack(track, activeStream));
-    }
-
-    if (movieStreamRef.current) {
-      movieStreamRef.current.getTracks().forEach((track) => {
-        try { pc.addTrack(track, movieStreamRef.current!); } catch (e) {}
-      });
     }
 
     pc.onicecandidate = (event) => {
@@ -287,27 +212,19 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
 
     pc.ontrack = (event) => {
       const incomingStream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
-      const streamId = incomingStream.id || '';
-      const isMovieTrack = streamId.includes('movie') || event.track.label.toLowerCase().includes('captured') || event.track.label.toLowerCase().includes('movie') || incomingStream.getVideoTracks().length > 1;
-
-      if (isMovieTrack) {
-        console.log(`[MovieBroadcast] 🎬 Incoming remote Live WebRTC Movie Stream from ${targetUserId}`);
-        setRemoteMovieStream(incomingStream);
-      } else {
-        setRemoteStreams((prev) => {
-          const next = new Map(prev);
-          const existing = next.get(targetUserId);
-          if (existing) {
-            if (!existing.getTracks().some((t) => t.id === event.track.id)) {
-              existing.addTrack(event.track);
-            }
-            next.set(targetUserId, new MediaStream(existing.getTracks()));
-          } else {
-            next.set(targetUserId, incomingStream);
+      setRemoteStreams((prev) => {
+        const next = new Map(prev);
+        const existing = next.get(targetUserId);
+        if (existing) {
+          if (!existing.getTracks().some((t) => t.id === event.track.id)) {
+            existing.addTrack(event.track);
           }
-          return next;
-        });
-      }
+          next.set(targetUserId, new MediaStream(existing.getTracks()));
+        } else {
+          next.set(targetUserId, incomingStream);
+        }
+        return next;
+      });
     };
 
     pcsRef.current.set(targetUserId, pc);
@@ -383,7 +300,6 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
       pendingCandidatesRef.current.delete(userId);
       isMakingOfferRef.current.delete(userId);
       ignoreOfferRef.current.delete(userId);
-      movieSendersRef.current.delete(userId);
       setRemoteStreams((prev) => {
         const next = new Map(prev);
         next.delete(userId);
@@ -510,11 +426,6 @@ export const WebRTCProvider: React.FC<{ currentUserId?: string; children: React.
       value={{
         localStream,
         remoteStreams,
-        movieStream,
-        remoteMovieStream,
-        isMovieBroadcasting,
-        broadcastMovieStream,
-        stopMovieBroadcast,
         isMuted,
         isVideoOff,
         mediaError,

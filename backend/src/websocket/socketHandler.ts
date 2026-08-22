@@ -819,6 +819,31 @@ export function setupSocketIO(io: SocketIOServer) {
       });
     });
 
+    // Dedicated Live Movie WebRTC Signaling Relay
+    socket.on('movie-stream:offer', ({ targetUserId, sdp }) => {
+      if (!socket.user || !targetUserId) return;
+      io.to(`user:${targetUserId}`).emit('movie-stream:offer', {
+        fromUserId: socket.user.id,
+        sdp,
+      });
+    });
+
+    socket.on('movie-stream:answer', ({ targetUserId, sdp }) => {
+      if (!socket.user || !targetUserId) return;
+      io.to(`user:${targetUserId}`).emit('movie-stream:answer', {
+        fromUserId: socket.user.id,
+        sdp,
+      });
+    });
+
+    socket.on('movie-stream:ice', ({ targetUserId, candidate }) => {
+      if (!socket.user || !targetUserId) return;
+      io.to(`user:${targetUserId}`).emit('movie-stream:ice', {
+        fromUserId: socket.user.id,
+        candidate,
+      });
+    });
+
     // P2P DataChannel Video Transfer Signaling Relay
     socket.on('p2p-video:offer', ({ targetUserId, sdp }) => {
       if (!socket.user || !targetUserId) return;

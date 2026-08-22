@@ -10,6 +10,7 @@ import { ChatPanel } from '../components/chat/ChatPanel';
 import { HostControlsModal } from '../components/room/HostControlsModal';
 import { ShareRoomModal } from '../components/room/ShareRoomModal';
 import { WebRTCProvider } from '../context/WebRTCContext';
+import { MovieStreamProvider } from '../context/MovieStreamContext';
 
 import { P2PVideoProvider } from '../context/P2PVideoContext';
 import { HLSPlayer } from '../components/player/HLSPlayer';
@@ -431,7 +432,8 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
   return (
     <P2PVideoProvider currentUserId={user?.id} hostId={currentRoom?.hostId}>
       <WebRTCProvider currentUserId={user?.id}>
-        <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-dark)' }}>
+        <MovieStreamProvider currentUserId={user?.id} hostId={currentRoom?.hostId}>
+          <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-dark)' }}>
 
           <Navbar onOpenCreateModal={() => setIsHostSettingsOpen(true)} />
 
@@ -1218,6 +1220,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
             />
           )}
         </div>
+        </MovieStreamProvider>
       </WebRTCProvider>
     </P2PVideoProvider>
   );

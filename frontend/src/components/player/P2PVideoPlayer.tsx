@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useP2PVideo } from '../../context/P2PVideoContext';
-import { useWebRTCContext } from '../../context/WebRTCContext';
+import { useMovieStreamContext } from '../../context/MovieStreamContext';
 import { PlayerController, getAspectRatioLabel } from './HLSPlayer';
 import { LiveWebRTCPlayer } from './LiveWebRTCPlayer';
 import { ShieldAlert, Radio, RefreshCw, WifiOff, UploadCloud, Video } from 'lucide-react';
@@ -14,6 +14,21 @@ interface P2PVideoPlayerProps {
   onVideoDimensionsChange?: (width: number, height: number, aspectRatio: number, ratioLabel: string) => void;
 }
 
+function getCapturedMovieStream(videoEl: HTMLVideoElement): MediaStream | null {
+  if (!videoEl) return null;
+  try {
+    if (typeof (videoEl as any).captureStream === 'function') {
+      return (videoEl as any).captureStream();
+    }
+    if (typeof (videoEl as any).mozCaptureStream === 'function') {
+      return (videoEl as any).mozCaptureStream();
+    }
+  } catch (err) {
+    console.warn('[MovieStream] captureStream feature detection or CORS notice:', err);
+  }
+  return null;
+}
+
 export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
   isHost,
   videoTitle,
@@ -23,7 +38,7 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
   onVideoDimensionsChange,
 }) => {
   const { localVideoObjectUrl, setLocalVideoFile, p2pStatus, p2pError, requestChunk, peerVideoMetadata, peerCount, reconnectP2P } = useP2PVideo();
-  const { broadcastMovieStream, remoteMovieStream } = useWebRTCContext();
+  const { startBroadcastingMovie, remoteMovieStream } = useMovieStreamContext();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [bufferProgress, setBufferProgress] = useState(0);
@@ -38,22 +53,13 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
     }
   }, [isHost, localVideoObjectUrl]);
 
-  // Host: Capture stream on video play for 0ms Live WebRTC Broadcast
+  // Host: Capture stream on video play for Live WebRTC MediaStream Broadcast
   const handleHostVideoPlay = () => {
     if (isHost && videoRef.current) {
-      const video = videoRef.current;
-      try {
-        const capturedStream = (video as any).captureStream
-          ? (video as any).captureStream()
-          : (video as any).mozCaptureStream
-          ? (video as any).mozCaptureStream()
-          : null;
-        if (capturedStream) {
-          console.log('⚡ [MovieBroadcast] Host captured movie MediaStream for Live WebRTC broadcast!');
-          broadcastMovieStream(capturedStream);
-        }
-      } catch (err) {
-        console.warn('Movie captureStream notice:', err);
+      const capturedStream = getCapturedMovieStream(videoRef.current);
+      if (capturedStream) {
+        console.log('[MovieStream] Host captured movie MediaStream for Live WebRTC broadcast');
+        startBroadcastingMovie(capturedStream);
       }
     }
   };

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { PlayerController, getAspectRatioLabel } from './HLSPlayer';
 import { Radio, VolumeX, Volume2, Sparkles, RefreshCw } from 'lucide-react';
-import { useWebRTCContext } from '../../context/WebRTCContext';
+import { useMovieStreamContext } from '../../context/MovieStreamContext';
 
 interface LiveWebRTCPlayerProps {
   stream?: MediaStream | null;
@@ -22,13 +22,13 @@ export const LiveWebRTCPlayer: React.FC<LiveWebRTCPlayerProps> = ({
   onEnded,
   onVideoDimensionsChange,
 }) => {
-  const { movieStream, remoteMovieStream } = useWebRTCContext();
+  const { localMovieStream, remoteMovieStream } = useMovieStreamContext();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isAutoplayBlocked, setIsAutoplayBlocked] = useState(false);
 
-  // Active stream is either custom passed stream, host's local movieStream, or viewer's remoteMovieStream
-  const activeStream = customStream !== undefined ? customStream : (isHost ? movieStream : remoteMovieStream);
+  // Active stream is either custom passed stream, host's localMovieStream, or viewer's remoteMovieStream
+  const activeStream = customStream !== undefined ? customStream : (isHost ? localMovieStream : remoteMovieStream);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -125,7 +125,7 @@ export const LiveWebRTCPlayer: React.FC<LiveWebRTCPlayerProps> = ({
       <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', padding: '6px 12px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)', fontSize: '0.75rem' }}>
         <Radio size={14} color="var(--success)" className="spin" />
         <span style={{ color: '#fff', fontWeight: 600 }}>
-          {isHost ? '⚡ Live WebRTC Movie Broadcaster' : '⚡ Live WebRTC Movie Stream (0ms Delay)'}
+          {isHost ? 'Live WebRTC Movie Broadcaster' : 'Live WebRTC Movie Stream'}
         </span>
       </div>
 
