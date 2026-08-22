@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { getSocket } from '../services/socket';
 import { api } from '../services/api';
+import { sendBinaryWithBackpressure } from '../utils/p2pTransfer';
 
 export interface P2PVideoContextType {
   localVideoFile: File | null;
@@ -14,8 +15,6 @@ export interface P2PVideoContextType {
 }
 
 const P2PVideoContext = createContext<P2PVideoContextType | null>(null);
-
-const MAX_BUFFERED_AMOUNT = 2 * 1024 * 1024; // 2MB backpressure threshold
 
 export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: string; children: React.ReactNode }> = ({
   currentUserId,
@@ -39,8 +38,15 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
 
   const chunkResolversRef = useRef<Map<string, (data: ArrayBuffer) => void>>(new Map());
 
+  // Per-viewer flow control & AbortController tracking
+  const viewerTransfersRef = useRef<Map<string, { abortController: AbortController; currentRequestId?: string }>>(new Map());
+
   // Handle local video file registration (Host Side)
   const setLocalVideoFile = (file: File | null) => {
+    // Abort all active host transfers when video changes
+    viewerTransfersRef.current.forEach((t) => t.abortController.abort());
+    viewerTransfersRef.current.clear();
+
     if (localVideoObjectUrl) {
       URL.revokeObjectURL(localVideoObjectUrl);
       setLocalVideoObjectUrl(null);
@@ -69,9 +75,12 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
       .catch(() => {});
   }, []);
 
-  // Cleanup ObjectURLs on unmount
+  // Cleanup ObjectURLs & Abort Controllers on unmount
   useEffect(() => {
     return () => {
+      viewerTransfersRef.current.forEach((t) => t.abortController.abort());
+      viewerTransfersRef.current.clear();
+
       if (localVideoObjectUrl) {
         URL.revokeObjectURL(localVideoObjectUrl);
       }
@@ -81,20 +90,23 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
     };
   }, []);
 
-  // Host DataChannel setup for incoming connection
-  const FRAME_SIZE = 16 * 1024; // 16 KB max WebRTC DataChannel frame size
-
-  // Host DataChannel setup for incoming connection
+  // Host DataChannel setup for incoming viewer connection
   const setupHostDataChannel = (targetUserId: string, channel: RTCDataChannel) => {
     channel.binaryType = 'arraybuffer';
     dataChannelsRef.current.set(targetUserId, channel);
     setPeerCount(dataChannelsRef.current.size);
 
     channel.onopen = () => {
-      console.log(`📡 P2P Video DataChannel OPENED with viewer ${targetUserId}`);
+      console.log(`[MovieTransfer] 📡 P2P Video DataChannel OPENED with viewer ${targetUserId}`);
     };
 
     channel.onclose = () => {
+      console.log(`[MovieTransfer] viewer=${targetUserId} DataChannel closed`);
+      const existing = viewerTransfersRef.current.get(targetUserId);
+      if (existing) {
+        existing.abortController.abort();
+        viewerTransfersRef.current.delete(targetUserId);
+      }
       dataChannelsRef.current.delete(targetUserId);
       setPeerCount(dataChannelsRef.current.size);
     };
@@ -116,51 +128,48 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
           } else if (msg.type === 'request-chunk') {
             const { requestId, startByte, endByte } = msg;
 
-            // Slice file chunk
+            // Abort previous transfer for this specific viewer if still active
+            const prevTransfer = viewerTransfersRef.current.get(targetUserId);
+            if (prevTransfer) {
+              prevTransfer.abortController.abort();
+            }
+
+            const abortController = new AbortController();
+            viewerTransfersRef.current.set(targetUserId, {
+              abortController,
+              currentRequestId: requestId,
+            });
+
+            // Slice requested chunk on demand without duplicating full movie in memory
             const blobSlice = file.slice(startByte, Math.min(file.size, endByte));
             const buffer = await blobSlice.arrayBuffer();
-            const totalBytes = buffer.byteLength;
-            const uint8 = new Uint8Array(buffer);
 
-            if (channel.readyState === 'open') {
-              // Send chunk start header
+            if (channel.readyState === 'open' && !abortController.signal.aborted) {
+              // Send metadata header first
               channel.send(JSON.stringify({
                 type: 'chunk-start',
                 requestId,
-                totalBytes,
+                totalBytes: buffer.byteLength,
+                totalPackets: Math.ceil(buffer.byteLength / (16 * 1024)),
               }));
 
-              // Send buffer in 16KB frames to respect WebRTC RTCDataChannel maxMessageSize
-              let offset = 0;
-              while (offset < totalBytes && channel.readyState === 'open') {
-                if (channel.bufferedAmount > MAX_BUFFERED_AMOUNT) {
-                  await new Promise<void>((resolve) => {
-                    const checkInterval = setInterval(() => {
-                      if (channel.bufferedAmount <= MAX_BUFFERED_AMOUNT / 2 || channel.readyState !== 'open') {
-                        clearInterval(checkInterval);
-                        resolve();
-                      }
-                    }, 20);
-                  });
-                }
-
-                if (channel.readyState !== 'open') break;
-
-                const end = Math.min(offset + FRAME_SIZE, totalBytes);
-                const subArray = uint8.subarray(offset, end);
-                // Create clean ArrayBuffer slice for transfer
-                const frameBuffer = subArray.buffer.slice(subArray.byteOffset, subArray.byteOffset + subArray.byteLength);
-                channel.send(frameBuffer);
-                offset = end;
-              }
+              // Send binary buffer using reusable 16KB sub-packetizer with event-driven backpressure
+              await sendBinaryWithBackpressure(channel, buffer, {
+                packetSize: 16 * 1024, // 16 KB per RTCDataChannel.send() call
+                highWaterMark: 512 * 1024,
+                lowWaterMark: 128 * 1024,
+                signal: abortController.signal,
+                viewerId: targetUserId,
+              });
             }
           }
         }
       } catch (err) {
-        console.error('P2P Host DataChannel message error:', err);
+        console.error(`[MovieTransfer] viewer=${targetUserId} DataChannel message error:`, err);
       }
     };
   };
+
 
   // Setup Peer Consumer DataChannel
   const setupConsumerDataChannel = (targetUserId: string, channel: RTCDataChannel) => {
@@ -349,10 +358,27 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
       }
     };
 
+    const handleUserLeft = ({ userId }: { userId: string }) => {
+      console.log(`[MovieTransfer] user=${userId} left room - cleaning up P2P connection`);
+      const existing = viewerTransfersRef.current.get(userId);
+      if (existing) {
+        existing.abortController.abort();
+        viewerTransfersRef.current.delete(userId);
+      }
+      const pc = pcsRef.current.get(userId);
+      if (pc) {
+        pc.close();
+        pcsRef.current.delete(userId);
+      }
+      dataChannelsRef.current.delete(userId);
+      setPeerCount(dataChannelsRef.current.size);
+    };
+
     socket.on('p2p-video:offer', handleOffer);
     socket.on('p2p-video:answer', handleAnswer);
     socket.on('p2p-video:ice', handleIce);
     socket.on('p2p-video:provider-ready', handleProviderReady);
+    socket.on('room:user-left', handleUserLeft);
 
     if (hostId && currentUserId && currentUserId !== hostId && p2pStatus === 'idle') {
       connectToHostProvider(hostId);
@@ -363,7 +389,9 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
       socket.off('p2p-video:answer', handleAnswer);
       socket.off('p2p-video:ice', handleIce);
       socket.off('p2p-video:provider-ready', handleProviderReady);
+      socket.off('room:user-left', handleUserLeft);
     };
+
   }, [currentUserId, hostId]);
 
   // Request chunk from provider over DataChannel
