@@ -448,13 +448,27 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
               fontSize: '0.82rem',
             }}
           >
-
-
-
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
+              <Film size={15} color="var(--primary)" />
+              <strong style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '160px' }}>
+                {currentVideo?.title || 'Watch Room'}
+              </strong>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '2px 8px', borderRadius: '12px', color: 'var(--success)', fontSize: '0.72rem' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
+                <span>Synced (+0.12s)</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                <Users size={13} />
+                <span>{participants.length}</span>
+              </div>
+            </div>
           </div>
-        </div>
+
 
         {/* Top Controls Bar (Ready System + Connection Health + Debug Console) */}
+
         <div className="desktop-top-controls" style={{ padding: '8px 16px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
           {currentRoom && user && (
             <ReadySystemBar
@@ -1196,9 +1210,10 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
         )}
       </div>
     </WebRTCProvider>
-    </P2PVideoProvider >
-  );
+  </P2PVideoProvider>
+);
 };
+
 
 
 
