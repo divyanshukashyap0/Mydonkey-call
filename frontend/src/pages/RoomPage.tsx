@@ -735,8 +735,8 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                           : 'Waiting for the room host to select a video.'}
                       </p>
                       {canControl && (
-                        <button className="btn btn-primary" onClick={() => setIsSelectVideoOpen(true)}>
-                          <Plus size={18} />
+                        <button className="btn btn-primary btn-sm" style={{ padding: '5px 14px', fontSize: '0.78rem', minHeight: '28px', gap: '5px' }} onClick={() => setIsSelectVideoOpen(true)}>
+                          <Plus size={14} />
                           <span>Choose Video Source</span>
                         </button>
                       )}
@@ -987,17 +987,17 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
 
             {/* Right Side Sidebar (Chat, Participants & Host Quick Controls) */}
             <div className="sidebar-section">
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', gap: '4px', marginBottom: '6px' }}>
                 <button
                   className={`btn btn-sm ${activeTab === 'chat' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ flex: 1, background: activeTab === 'chat' ? 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' : undefined }}
+                  style={{ flex: 1, padding: '3px 8px', fontSize: '0.72rem', minHeight: '24px', background: activeTab === 'chat' ? 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' : undefined }}
                   onClick={() => setActiveTab('chat')}
                 >
                   Chat
                 </button>
                 <button
                   className={`btn btn-sm ${activeTab === 'participants' ? 'btn-primary' : 'btn-secondary'}`}
-                  style={{ flex: 1, background: activeTab === 'participants' ? 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' : undefined }}
+                  style={{ flex: 1, padding: '3px 8px', fontSize: '0.72rem', minHeight: '24px', background: activeTab === 'participants' ? 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)' : undefined }}
                   onClick={() => setActiveTab('participants')}
                 >
                   Participants
@@ -1014,28 +1014,28 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
 
               {/* Host Quick Controls Panel - Visible to HOST ONLY */}
               {isHost && (
-                <div className="glass-panel" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Crown size={12} color="var(--warning)" />
+                <div className="glass-panel" style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '1px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Crown size={11} color="var(--warning)" />
                     <span>HOST CONTROLS</span>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                    <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleUserPlay}>
-                      <Play size={12} /> Play
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+                    <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.7rem', padding: '3px 6px', minHeight: '24px' }} onClick={handleUserPlay}>
+                      <Play size={11} /> Play
                     </button>
-                    <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleUserPause}>
-                      <Pause size={12} /> Pause
+                    <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.7rem', padding: '3px 6px', minHeight: '24px' }} onClick={handleUserPause}>
+                      <Pause size={11} /> Pause
                     </button>
-                    <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={handleManualSync}>
-                      <RefreshCw size={12} /> Sync
+                    <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.7rem', padding: '3px 6px', minHeight: '24px' }} onClick={handleManualSync}>
+                      <RefreshCw size={11} /> Sync
                     </button>
-                    <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.75rem', padding: '6px' }} onClick={() => getSocket().emit('room:toggle-lock')}>
-                      <Lock size={12} /> Lock
+                    <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.7rem', padding: '3px 6px', minHeight: '24px' }} onClick={() => getSocket().emit('room:toggle-lock')}>
+                      <Lock size={11} /> Lock
                     </button>
                   </div>
                   <button
-                    className="btn btn-primary"
-                    style={{ width: '100%', fontSize: '0.8rem', padding: '6px', background: 'linear-gradient(135deg, #e50914 0%, #990000 100%)' }}
+                    className="btn btn-primary btn-sm"
+                    style={{ width: '100%', fontSize: '0.72rem', padding: '4px 8px', minHeight: '26px', background: 'linear-gradient(135deg, #e50914 0%, #990000 100%)' }}
                     onClick={() => setIsHostSettingsOpen(true)}
                   >
                     <span>End Room</span>

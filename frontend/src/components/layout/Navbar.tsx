@@ -92,9 +92,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenCreateModal, onOpenJoinMod
               <button
                 className="btn btn-primary btn-sm"
                 onClick={() => setIsShareModalOpen(true)}
-                style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)', gap: '6px' }}
+                style={{ background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)', gap: '4px', padding: '4px 10px', fontSize: '0.74rem', minHeight: '26px' }}
               >
-                <Share2 size={16} />
+                <Share2 size={13} />
                 <span>Share Link</span>
               </button>
 

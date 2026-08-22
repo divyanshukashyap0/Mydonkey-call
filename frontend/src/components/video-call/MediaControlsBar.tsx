@@ -142,23 +142,24 @@ export const MediaControlsBar: React.FC<MediaControlsBarProps> = ({
         onClick={onToggleMic}
         title={isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
         style={{
-          padding: '6px 14px',
-          borderRadius: '8px',
+          padding: '3px 8px',
+          borderRadius: '6px',
           border: isMuted ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
           background: isMuted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.08)',
           color: isMuted ? '#fca5a5' : '#e2e8f0',
-          fontWeight: 700,
-          fontSize: '0.8rem',
+          fontWeight: 600,
+          fontSize: '0.7rem',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '6px',
+          gap: '4px',
+          minHeight: '24px',
           transition: 'all 0.2s ease',
           backdropFilter: 'blur(8px)',
         }}
       >
-        {isMuted ? <MicOff size={15} color="#ef4444" /> : <Mic size={15} color="#818cf8" />}
+        {isMuted ? <MicOff size={13} color="#ef4444" /> : <Mic size={13} color="#818cf8" />}
         <span>{isMuted ? 'Unmute' : 'Mute'}</span>
       </button>
 
@@ -166,23 +167,24 @@ export const MediaControlsBar: React.FC<MediaControlsBarProps> = ({
         onClick={onToggleCamera}
         title={isVideoOff ? 'Turn Camera On' : 'Turn Camera Off'}
         style={{
-          padding: '6px 14px',
-          borderRadius: '8px',
+          padding: '3px 8px',
+          borderRadius: '6px',
           border: isVideoOff ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
           background: isVideoOff ? 'rgba(239, 68, 68, 0.2)' : 'rgba(255, 255, 255, 0.08)',
           color: isVideoOff ? '#fca5a5' : '#e2e8f0',
-          fontWeight: 700,
-          fontSize: '0.8rem',
+          fontWeight: 600,
+          fontSize: '0.7rem',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '6px',
+          gap: '4px',
+          minHeight: '24px',
           transition: 'all 0.2s ease',
           backdropFilter: 'blur(8px)',
         }}
       >
-        {isVideoOff ? <VideoOff size={15} color="#ef4444" /> : <VideoIcon size={15} color="#34d399" />}
+        {isVideoOff ? <VideoOff size={13} color="#ef4444" /> : <VideoIcon size={13} color="#34d399" />}
         <span>{isVideoOff ? 'Cam Off' : 'Cam On'}</span>
       </button>
 
@@ -191,23 +193,24 @@ export const MediaControlsBar: React.FC<MediaControlsBarProps> = ({
           onClick={onToggleSelfView}
           title={showSelfView ? 'Hide Self Camera Preview' : 'Show Self Camera Preview'}
           style={{
-            padding: '6px 14px',
-            borderRadius: '8px',
+            padding: '3px 8px',
+            borderRadius: '6px',
             border: showSelfView ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid rgba(255, 255, 255, 0.12)',
             background: showSelfView ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255, 255, 255, 0.08)',
             color: showSelfView ? '#a5b4fc' : '#e2e8f0',
-            fontWeight: 700,
-            fontSize: '0.8rem',
+            fontWeight: 600,
+            fontSize: '0.7rem',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '6px',
+            gap: '4px',
+            minHeight: '24px',
             transition: 'all 0.2s ease',
             backdropFilter: 'blur(8px)',
           }}
         >
-          <User size={15} color={showSelfView ? '#818cf8' : '#94a3b8'} />
+          <User size={13} color="#a5b4fc" />
           <span>{showSelfView ? 'Self On' : 'Self Off'}</span>
         </button>
       )}
