@@ -50,97 +50,60 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
       if (!peerVideoMetadata) return;
 
       const { fileSize, mimeType } = peerVideoMetadata;
-      const CHUNK_SIZE = 128 * 1024; // 128 KB chunks for fast streaming
+      const CHUNK_SIZE = 256 * 1024; // 256 KB chunks for high-speed streaming
       const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
+      const buffers: ArrayBuffer[] = [];
+      let fetchedBytes = 0;
 
-      if (window.MediaSource && MediaSource.isTypeSupported(mimeType || 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"')) {
-        try {
-          const ms = new MediaSource();
-          mediaSourceRef.current = ms;
-          const msUrl = URL.createObjectURL(ms);
-          if (currentObjectUrlRef.current) URL.revokeObjectURL(currentObjectUrlRef.current);
-          currentObjectUrlRef.current = msUrl;
-          if (isMounted) setStreamUrl(msUrl);
+      setIsBuffering(true);
+      setBufferProgress(0);
 
-          ms.addEventListener('sourceopen', async () => {
-            if (cancel || ms.readyState !== 'open') return;
-            try {
-              const sb = ms.addSourceBuffer(mimeType || 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
-              sourceBufferRef.current = sb;
+      // Fast-start window: start playing after first 2 chunks (512 KB) or 100% of small file
+      const initialWindow = Math.min(2, totalChunks);
 
-              let fetchedBytes = 0;
-              for (let i = 0; i < totalChunks && !cancel; i++) {
-                const start = i * CHUNK_SIZE;
-                const end = Math.min(fileSize, (i + 1) * CHUNK_SIZE);
-                const chunkData = await requestChunk(start, end);
+      for (let i = 0; i < totalChunks && !cancel; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(fileSize, (i + 1) * CHUNK_SIZE);
+        const chunkData = await requestChunk(start, end);
 
-                if (chunkData && sb && !sb.updating && ms.readyState === 'open') {
-                  fetchedBytes += chunkData.byteLength;
-                  sb.appendBuffer(chunkData);
-                  await new Promise((r) => {
-                    sb.onupdateend = r;
-                  });
+        if (!chunkData || cancel || !isMounted) break;
 
-                  if (isMounted) {
-                    setBufferProgress(Math.round((fetchedBytes / fileSize) * 100));
-                  }
-                }
-              }
+        buffers.push(chunkData);
+        fetchedBytes += chunkData.byteLength;
 
-              if (ms.readyState === 'open' && !sb.updating) {
-                ms.endOfStream();
-              }
-            } catch (sbErr) {
-              console.warn('MSE SourceBuffer warning:', sbErr);
+        const progressPercent = Math.round((fetchedBytes / fileSize) * 100);
+        if (isMounted) setBufferProgress(progressPercent);
+
+        // Instantly generate playable Blob URL on initial window, then periodically or on 100%
+        if (i === initialWindow - 1 || i % 4 === 0 || i === totalChunks - 1) {
+          const blob = new Blob(buffers, { type: mimeType || 'video/mp4' });
+          const blobUrl = URL.createObjectURL(blob);
+
+          if (isMounted) {
+            const video = videoRef.current;
+            const prevTime = video?.currentTime || 0;
+
+            setStreamUrl(blobUrl);
+            setIsBuffering(false);
+
+            if (currentObjectUrlRef.current) {
+              URL.revokeObjectURL(currentObjectUrlRef.current);
             }
-          });
-          return;
-        } catch (mseErr) {
-          console.warn('MSE init fallback to Blob array:', mseErr);
-        }
-      }
+            currentObjectUrlRef.current = blobUrl;
 
-      // Progressive Blob Stream Buffer
-      try {
-        setIsBuffering(true);
-        const buffers: ArrayBuffer[] = [];
-        let fetched = 0;
-        const initialWindow = Math.min(4, totalChunks);
-
-        for (let i = 0; i < totalChunks && !cancel; i++) {
-          const start = i * CHUNK_SIZE;
-          const end = Math.min(fileSize, (i + 1) * CHUNK_SIZE);
-          const chunkData = await requestChunk(start, end);
-          if (chunkData) {
-            buffers.push(chunkData);
-            fetched += chunkData.byteLength;
-
-            if (isMounted) {
-              setBufferProgress(Math.round((fetched / fileSize) * 100));
+            // Preserve current playback time and auto-play
+            if (video && prevTime > 0) {
+              video.currentTime = prevTime;
             }
-
-            // Create initial playable Blob URL once initial window is ready
-            if (i === initialWindow - 1 || i === totalChunks - 1) {
-              const blob = new Blob(buffers, { type: mimeType || 'video/mp4' });
-              const blobUrl = URL.createObjectURL(blob);
-              if (currentObjectUrlRef.current) URL.revokeObjectURL(currentObjectUrlRef.current);
-              currentObjectUrlRef.current = blobUrl;
-
-              if (isMounted) {
-                const prevTime = videoRef.current?.currentTime || 0;
-                setStreamUrl(blobUrl);
-                setIsBuffering(false);
-                if (videoRef.current && prevTime > 0) {
-                  videoRef.current.currentTime = prevTime;
-                }
-              }
+            if (video && video.paused) {
+              video.play().catch(() => {
+                video.muted = true;
+                video.play().catch(() => {});
+              });
             }
           }
         }
-      } catch (err) {
-        console.error('P2P fallback chunk streaming error:', err);
       }
-
     }
 
     initP2PStream();
@@ -148,12 +111,9 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
     return () => {
       isMounted = false;
       cancel = true;
-      if (currentObjectUrlRef.current) {
-        URL.revokeObjectURL(currentObjectUrlRef.current);
-        currentObjectUrlRef.current = null;
-      }
     };
   }, [isHost, peerVideoMetadata]);
+
 
   // Controller Builder
   useEffect(() => {
