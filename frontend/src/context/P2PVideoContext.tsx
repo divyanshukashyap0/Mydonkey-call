@@ -130,12 +130,6 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
           } else if (msg.type === 'request-chunk') {
             const { requestId, startByte, endByte } = msg;
 
-            // Abort previous transfer for this specific viewer if still active
-            const prevTransfer = viewerTransfersRef.current.get(targetUserId);
-            if (prevTransfer) {
-              prevTransfer.abortController.abort();
-            }
-
             const abortController = new AbortController();
             viewerTransfersRef.current.set(targetUserId, {
               abortController,
@@ -145,6 +139,7 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
             // Slice requested chunk on demand without duplicating full movie in memory
             const blobSlice = file.slice(startByte, Math.min(file.size, endByte));
             const buffer = await blobSlice.arrayBuffer();
+
 
             if (channel.readyState === 'open' && !abortController.signal.aborted) {
               // Send metadata header first

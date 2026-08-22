@@ -114,6 +114,19 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
     };
   }, [isHost, peerVideoMetadata]);
 
+  // Auto-play stream on viewer device once streamUrl updates
+  useEffect(() => {
+    if (!isHost && streamUrl && videoRef.current) {
+      const video = videoRef.current;
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          video.muted = true;
+          video.play().catch(() => {});
+        });
+      }
+    }
+  }, [isHost, streamUrl]);
 
   // Controller Builder
   useEffect(() => {
