@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Share2, Copy, Check, QrCode, MessageCircle, Send, Mail, Sparkles, ShieldCheck, Link2 } from 'lucide-react';
+import { Share2, QrCode, MessageCircle, Send, Mail, ShieldCheck } from 'lucide-react';
 import { AnimatedModal } from '../common/AnimatedModal';
 import { useToast } from '../common/ToastNotification';
 
@@ -16,61 +16,58 @@ export const ShareRoomModal: React.FC<ShareRoomModalProps> = ({
   onClose,
   roomCode,
   roomName,
-  currentVideoTitle,
 }) => {
   const { showToast } = useToast();
-  const [copiedLink, setCopiedLink] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
   const [showQrCode, setShowQrCode] = useState(false);
 
   const normalizedCode = roomCode.toUpperCase().trim();
+  const displayRoomName = roomName?.trim() || `Room ${normalizedCode}`;
   const shareUrl = `${window.location.origin}/room/${normalizedCode}`;
-  const inviteText = `🎬 Join my Watch Party on MyDonkey Call${currentVideoTitle ? ` to watch "${currentVideoTitle}"` : ''}! Click the link to join instantly: ${shareUrl}`;
+  const inviteText = `🎬 Join my Watch Party "${displayRoomName}" on MyDonkey Call! Click the link to join instantly: ${shareUrl}`;
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareUrl);
-    setCopiedLink(true);
     showToast('Watch Party Link copied to clipboard!', 'success');
-    setTimeout(() => setCopiedLink(false), 2500);
-  };
-
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(normalizedCode);
-    setCopiedCode(true);
-    showToast(`Room code ${normalizedCode} copied!`, 'success');
-    setTimeout(() => setCopiedCode(false), 2500);
   };
 
   const handleNativeShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: roomName || 'MyDonkey Call Watch Party',
+          title: displayRoomName,
           text: inviteText,
           url: shareUrl,
         });
         showToast('Shared successfully!', 'success');
-      } catch (err) {
-        handleCopyLink();
+        return;
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
+          handleCopyLink();
+        }
+        return;
       }
-    } else {
-      handleCopyLink();
     }
+    handleCopyLink();
   };
 
-  const handleShareWhatsApp = () => {
-    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(inviteText)}`;
-    window.open(url, '_blank');
-  };
+  const handleSocialShare = (platform: 'whatsapp' | 'telegram' | 'email') => {
+    let url = '';
+    const encodedText = encodeURIComponent(inviteText);
+    const encodedUrl = encodeURIComponent(shareUrl);
 
-  const handleShareTelegram = () => {
-    const url = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(inviteText)}`;
-    window.open(url, '_blank');
-  };
+    switch (platform) {
+      case 'whatsapp':
+        url = `https://api.whatsapp.com/send?text=${encodedText}`;
+        break;
+      case 'telegram':
+        url = `https://t.me/share/url?url=${encodedUrl}&text=${encodeURIComponent(`🎬 Join "${displayRoomName}" on MyDonkey Call!`)}`;
+        break;
+      case 'email':
+        url = `mailto:?subject=${encodeURIComponent(`Watch Party Invitation: ${displayRoomName}`)}&body=${encodedText}`;
+        break;
+    }
 
-  const handleShareEmail = () => {
-    const url = `mailto:?subject=${encodeURIComponent('Join my Watch Party on MyDonkey Call')}&body=${encodeURIComponent(inviteText)}`;
-    window.location.href = url;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(shareUrl)}&color=06b6d4&bcolor=0f172a`;
@@ -83,7 +80,7 @@ export const ShareRoomModal: React.FC<ShareRoomModalProps> = ({
         </div>
         <h2 style={{ fontSize: '1.45rem', fontWeight: 800 }}>Invite Friends to Watch Party</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: '4px' }}>
-          Share the link below so anyone can connect instantly to room <strong style={{ color: '#fff' }}>{normalizedCode}</strong>
+          Share the link below to invite friends to <strong style={{ color: '#fff' }}>{displayRoomName}</strong> (Code: <span style={{ color: 'var(--accent)' }}>{normalizedCode}</span>)
         </p>
       </div>
 
@@ -98,11 +95,6 @@ export const ShareRoomModal: React.FC<ShareRoomModalProps> = ({
           <span>Share</span>
         </button>
 
-
-
-
-
-
         {/* Social Sharing Quick Buttons */}
         <div>
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -110,7 +102,7 @@ export const ShareRoomModal: React.FC<ShareRoomModalProps> = ({
           </span>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
             <button
-              onClick={handleShareWhatsApp}
+              onClick={() => handleSocialShare('whatsapp')}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', background: 'rgba(37, 211, 102, 0.15)', border: '1px solid rgba(37, 211, 102, 0.3)', color: '#4ade80', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}
             >
               <MessageCircle size={16} />
@@ -118,7 +110,7 @@ export const ShareRoomModal: React.FC<ShareRoomModalProps> = ({
             </button>
 
             <button
-              onClick={handleShareTelegram}
+              onClick={() => handleSocialShare('telegram')}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', background: 'rgba(0, 136, 204, 0.15)', border: '1px solid rgba(0, 136, 204, 0.3)', color: '#38bdf8', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}
             >
               <Send size={16} />
@@ -126,7 +118,7 @@ export const ShareRoomModal: React.FC<ShareRoomModalProps> = ({
             </button>
 
             <button
-              onClick={handleShareEmail}
+              onClick={() => handleSocialShare('email')}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#c084fc', borderRadius: 'var(--radius-md)', cursor: 'pointer', fontWeight: 600, fontSize: '0.82rem' }}
             >
               <Mail size={16} />
