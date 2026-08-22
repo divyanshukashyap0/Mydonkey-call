@@ -49,7 +49,7 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
       if (!peerVideoMetadata) return;
 
       const { fileSize, mimeType } = peerVideoMetadata;
-      const CHUNK_SIZE = 512 * 1024;
+      const CHUNK_SIZE = 128 * 1024; // 128 KB chunks for fast streaming
       const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
 
       if (window.MediaSource && MediaSource.isTypeSupported(mimeType || 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"')) {
@@ -99,37 +99,47 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
         }
       }
 
-      // Fallback: Buffer initial window chunks into Blob URL
+      // Progressive Blob Stream Buffer
       try {
         setIsBuffering(true);
-        const initialChunksCount = Math.min(6, totalChunks);
         const buffers: ArrayBuffer[] = [];
         let fetched = 0;
+        const initialWindow = Math.min(4, totalChunks);
 
-        for (let i = 0; i < initialChunksCount && !cancel; i++) {
+        for (let i = 0; i < totalChunks && !cancel; i++) {
           const start = i * CHUNK_SIZE;
           const end = Math.min(fileSize, (i + 1) * CHUNK_SIZE);
           const chunkData = await requestChunk(start, end);
           if (chunkData) {
             buffers.push(chunkData);
             fetched += chunkData.byteLength;
-            if (isMounted) setBufferProgress(Math.round((fetched / Math.min(fileSize, initialChunksCount * CHUNK_SIZE)) * 100));
-          }
-        }
 
-        if (buffers.length > 0 && !cancel) {
-          const blob = new Blob(buffers, { type: mimeType || 'video/mp4' });
-          const blobUrl = URL.createObjectURL(blob);
-          if (currentObjectUrlRef.current) URL.revokeObjectURL(currentObjectUrlRef.current);
-          currentObjectUrlRef.current = blobUrl;
-          if (isMounted) {
-            setStreamUrl(blobUrl);
-            setIsBuffering(false);
+            if (isMounted) {
+              setBufferProgress(Math.round((fetched / fileSize) * 100));
+            }
+
+            // Create initial playable Blob URL once initial window is ready
+            if (i === initialWindow - 1 || i === totalChunks - 1) {
+              const blob = new Blob(buffers, { type: mimeType || 'video/mp4' });
+              const blobUrl = URL.createObjectURL(blob);
+              if (currentObjectUrlRef.current) URL.revokeObjectURL(currentObjectUrlRef.current);
+              currentObjectUrlRef.current = blobUrl;
+
+              if (isMounted) {
+                const prevTime = videoRef.current?.currentTime || 0;
+                setStreamUrl(blobUrl);
+                setIsBuffering(false);
+                if (videoRef.current && prevTime > 0) {
+                  videoRef.current.currentTime = prevTime;
+                }
+              }
+            }
           }
         }
       } catch (err) {
         console.error('P2P fallback chunk streaming error:', err);
       }
+
     }
 
     initP2PStream();

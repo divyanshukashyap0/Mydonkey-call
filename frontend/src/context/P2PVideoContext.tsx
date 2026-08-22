@@ -82,6 +82,9 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
   }, []);
 
   // Host DataChannel setup for incoming connection
+  const FRAME_SIZE = 16 * 1024; // 16 KB max WebRTC DataChannel frame size
+
+  // Host DataChannel setup for incoming connection
   const setupHostDataChannel = (targetUserId: string, channel: RTCDataChannel) => {
     channel.binaryType = 'arraybuffer';
     dataChannelsRef.current.set(targetUserId, channel);
@@ -116,23 +119,40 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
             // Slice file chunk
             const blobSlice = file.slice(startByte, Math.min(file.size, endByte));
             const buffer = await blobSlice.arrayBuffer();
-
-            // Backpressure check
-            if (channel.bufferedAmount > MAX_BUFFERED_AMOUNT) {
-              await new Promise<void>((resolve) => {
-                const checkInterval = setInterval(() => {
-                  if (channel.bufferedAmount <= MAX_BUFFERED_AMOUNT / 2 || channel.readyState !== 'open') {
-                    clearInterval(checkInterval);
-                    resolve();
-                  }
-                }, 50);
-              });
-            }
+            const totalBytes = buffer.byteLength;
+            const uint8 = new Uint8Array(buffer);
 
             if (channel.readyState === 'open') {
-              // Send header JSON followed by raw ArrayBuffer chunk
-              channel.send(JSON.stringify({ type: 'chunk-header', requestId, byteLength: buffer.byteLength }));
-              channel.send(buffer);
+              // Send chunk start header
+              channel.send(JSON.stringify({
+                type: 'chunk-start',
+                requestId,
+                totalBytes,
+              }));
+
+              // Send buffer in 16KB frames to respect WebRTC RTCDataChannel maxMessageSize
+              let offset = 0;
+              while (offset < totalBytes && channel.readyState === 'open') {
+                if (channel.bufferedAmount > MAX_BUFFERED_AMOUNT) {
+                  await new Promise<void>((resolve) => {
+                    const checkInterval = setInterval(() => {
+                      if (channel.bufferedAmount <= MAX_BUFFERED_AMOUNT / 2 || channel.readyState !== 'open') {
+                        clearInterval(checkInterval);
+                        resolve();
+                      }
+                    }, 20);
+                  });
+                }
+
+                if (channel.readyState !== 'open') break;
+
+                const end = Math.min(offset + FRAME_SIZE, totalBytes);
+                const subArray = uint8.subarray(offset, end);
+                // Create clean ArrayBuffer slice for transfer
+                const frameBuffer = subArray.buffer.slice(subArray.byteOffset, subArray.byteOffset + subArray.byteLength);
+                channel.send(frameBuffer);
+                offset = end;
+              }
             }
           }
         }
@@ -147,7 +167,7 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
     channel.binaryType = 'arraybuffer';
     dataChannelsRef.current.set(targetUserId, channel);
 
-    let activeRequestId: string | null = null;
+    let activeTransfer: { requestId: string; totalBytes: number; receivedBytes: number; chunks: Uint8Array[] } | null = null;
 
     channel.onopen = () => {
       console.log(`📡 P2P Video Consumer DataChannel OPENED with provider ${targetUserId}`);
@@ -178,22 +198,42 @@ export const P2PVideoProvider: React.FC<{ currentUserId?: string; hostId?: strin
               mimeType: msg.mimeType,
               fileName: msg.fileName,
             });
-          } else if (msg.type === 'chunk-header') {
-            activeRequestId = msg.requestId;
+          } else if (msg.type === 'chunk-start') {
+            activeTransfer = {
+              requestId: msg.requestId,
+              totalBytes: msg.totalBytes,
+              receivedBytes: 0,
+              chunks: [],
+            };
           }
-        } else if (event.data instanceof ArrayBuffer && activeRequestId) {
-          const resolver = chunkResolversRef.current.get(activeRequestId);
-          if (resolver) {
-            resolver(event.data);
-            chunkResolversRef.current.delete(activeRequestId);
+        } else if (event.data instanceof ArrayBuffer && activeTransfer) {
+          const frameUint8 = new Uint8Array(event.data);
+          activeTransfer.chunks.push(frameUint8);
+          activeTransfer.receivedBytes += frameUint8.byteLength;
+
+          if (activeTransfer.receivedBytes >= activeTransfer.totalBytes) {
+            const { requestId, totalBytes, chunks } = activeTransfer;
+            const fullBuffer = new Uint8Array(totalBytes);
+            let pos = 0;
+            for (const chunk of chunks) {
+              fullBuffer.set(chunk, pos);
+              pos += chunk.byteLength;
+            }
+
+            const resolver = chunkResolversRef.current.get(requestId);
+            if (resolver) {
+              resolver(fullBuffer.buffer);
+              chunkResolversRef.current.delete(requestId);
+            }
+            activeTransfer = null;
           }
-          activeRequestId = null;
         }
       } catch (err) {
         console.error('P2P Consumer DataChannel message error:', err);
       }
     };
   };
+
 
   // Connect to Host Provider (Viewer Side)
   const connectToHostProvider = async (providerUserId: string) => {
