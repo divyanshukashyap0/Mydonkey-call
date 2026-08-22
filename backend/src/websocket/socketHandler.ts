@@ -794,7 +794,7 @@ export function setupSocketIO(io: SocketIOServer) {
       }
     });
 
-    // WebRTC Signaling Relay - Direct 1-to-1 Peer Relay
+    // WebRTC Camera/Mic Signaling Relay - Direct 1-to-1 Peer Relay
     socket.on('webrtc:offer', ({ targetUserId, sdp }) => {
       if (!socket.user || !targetUserId) return;
       io.to(`user:${targetUserId}`).emit('webrtc:offer', {
@@ -818,6 +818,40 @@ export function setupSocketIO(io: SocketIOServer) {
         candidate,
       });
     });
+
+    // P2P DataChannel Video Transfer Signaling Relay
+    socket.on('p2p-video:offer', ({ targetUserId, sdp }) => {
+      if (!socket.user || !targetUserId) return;
+      io.to(`user:${targetUserId}`).emit('p2p-video:offer', {
+        fromUserId: socket.user.id,
+        sdp,
+      });
+    });
+
+    socket.on('p2p-video:answer', ({ targetUserId, sdp }) => {
+      if (!socket.user || !targetUserId) return;
+      io.to(`user:${targetUserId}`).emit('p2p-video:answer', {
+        fromUserId: socket.user.id,
+        sdp,
+      });
+    });
+
+    socket.on('p2p-video:ice', ({ targetUserId, candidate }) => {
+      if (!socket.user || !targetUserId) return;
+      io.to(`user:${targetUserId}`).emit('p2p-video:ice', {
+        fromUserId: socket.user.id,
+        candidate,
+      });
+    });
+
+    socket.on('p2p-video:provider-ready', ({ videoId }) => {
+      if (!socket.user || !socket.currentRoomCode) return;
+      socket.to(`room:${socket.currentRoomCode}`).emit('p2p-video:provider-ready', {
+        providerId: socket.user.id,
+        videoId,
+      });
+    });
+
 
     socket.on('participant:toggle-media', async ({ isMuted, isVideoOff }) => {
       try {

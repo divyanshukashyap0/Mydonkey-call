@@ -25,17 +25,25 @@ function formatETA(seconds: number): string {
 }
 
 import { useUploadStore } from '../../store/useUploadStore';
+import { useP2PVideo } from '../../context/P2PVideoContext';
 import { AnimatedModal } from '../common/AnimatedModal';
 import { EyeCatchingLoader } from '../common/EyeCatchingLoader';
+
 
 export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => {
   const { startUpload, pauseUpload, resumeUpload, progress, activeFile, isInitializing, error } = useUploadStore();
   const [isDragging, setIsDragging] = useState(false);
 
+  const { setLocalVideoFile } = useP2PVideo();
+
+  const handleFileSelection = (file: File) => {
+    setLocalVideoFile(file);
+    startUpload(file);
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      startUpload(file);
+      handleFileSelection(e.target.files[0]);
     }
   };
 
@@ -52,8 +60,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
     e.preventDefault();
     setIsDragging(false);
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      const file = e.dataTransfer.files[0];
-      startUpload(file);
+      handleFileSelection(e.dataTransfer.files[0]);
     }
   };
 
@@ -72,9 +79,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
         <div style={{ width: '48px', height: '48px', borderRadius: '16px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px auto', color: 'var(--success)' }}>
           <UploadCloud size={24} />
         </div>
-        <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Upload Movie File</h2>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Select Local Video File</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>
-          Select or drop a video file. Upload starts instantly and plays automatically in room!
+          Select or drop a video file. Video streams directly to room participants via WebRTC DataChannels!
         </p>
       </div>
 
@@ -108,7 +115,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
               {isDragging ? 'Drop Video File Here' : 'Drop or Choose a Video File'}
             </span>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '6px' }}>
-              Upload starts automatically upon selection. Supports MP4, MKV, MOV, WEBM.
+              Instant local playback + direct P2P streaming to viewers. Supports MP4, MKV, MOV, WEBM.
             </span>
             <input type="file" accept="video/*" onChange={handleFileChange} style={{ display: 'none' }} />
           </label>
@@ -116,8 +123,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
       ) : isInitializing && !progress ? (
         <EyeCatchingLoader
           title="Initializing Stream..."
-          subtitle={`Preparing instant playback for ${activeFile?.name}...`}
-          badgeText="RESUMABLE CHUNK STREAM"
+          subtitle={`Preparing instant P2P playback for ${activeFile?.name}...`}
+          badgeText="DIRECT P2P STREAM"
           fullScreen={false}
         />
       ) : progress ? (
@@ -133,25 +140,11 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose }) => 
             </div>
           </div>
 
-          {/* Streaming Notification Banner */}
-          {progress.status === 'UPLOADING' && progress.currentChunk >= 3 && (
-            <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#6ee7b7', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Play size={16} color="var(--success)" />
-              <span><strong>Video stream live in room!</strong> Movie plays automatically while remaining chunks upload.</span>
-            </div>
-          )}
-          {progress.status === 'UPLOADING' && progress.currentChunk < 3 && (
-            <div style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#93c5fd', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <UploadCloud size={16} color="var(--accent)" />
-              <span><strong>Buffering initial stream ({progress.currentChunk}/3 chunks)...</strong> Playback starting in room shortly!</span>
-            </div>
-          )}
-          {progress.status === 'COMPLETED' && (
-            <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#6ee7b7', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <CheckCircle size={16} color="var(--success)" />
-              <span><strong>Upload complete!</strong> Movie is ready for synchronized watch party in room.</span>
-            </div>
-          )}
+          <div style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#6ee7b7', padding: '10px 14px', borderRadius: 'var(--radius-md)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <CheckCircle size={16} color="var(--success)" />
+            <span><strong>P2P Video stream active!</strong> Video is broadcasting directly to room devices via WebRTC DataChannels.</span>
+          </div>
+
 
           {/* Telemetry Metrics Grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '0.8rem', color: 'var(--text-muted)', background: 'var(--bg-input)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>

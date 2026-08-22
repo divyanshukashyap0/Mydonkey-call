@@ -71,14 +71,7 @@ export async function initiateUpload(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: 'fileName and fileSize are required' });
     }
 
-    const chunkSize = env.DEFAULT_CHUNK_SIZE_MB * 1024 * 1024; // e.g. 10MB
-    const totalChunks = Math.ceil(fileSize / chunkSize);
-
     let parsedDuration = duration && !isNaN(Number(duration)) && Number(duration) > 0 ? Number(duration) : null;
-    if (!parsedDuration && fileSize && Number(fileSize) > 0) {
-      const estimatedMinutes = Number(fileSize) / (2.5 * 1024 * 1024);
-      parsedDuration = Math.round(estimatedMinutes * 60);
-    }
 
     const video = await prisma.video.create({
       data: {
@@ -89,192 +82,56 @@ export async function initiateUpload(req: AuthRequest, res: Response) {
         fileSize: BigInt(fileSize),
         duration: parsedDuration,
         mimeType: mimeType || 'video/mp4',
-        status: 'UPLOADING',
+        status: 'READY',
+        manifestUrl: `p2p://${fileName}`,
       },
     });
 
-    const manifestUrl = `/api/videos/stream/${video.id}/index.m3u8`;
-    const updatedVideo = await prisma.video.update({
-      where: { id: video.id },
-      data: { manifestUrl },
-    });
-
-    syncVideoMetadataToFirestore(updatedVideo).catch(() => {});
+    syncVideoMetadataToFirestore(video).catch(() => {});
 
     const upload = await prisma.upload.create({
       data: {
         videoId: video.id,
         userId: req.user.id,
-        chunkSize,
-        totalChunks,
-        completedChunks: 0,
-        status: 'UPLOADING',
+        chunkSize: 1024 * 1024,
+        totalChunks: Math.ceil(fileSize / (1024 * 1024)),
+        completedChunks: Math.ceil(fileSize / (1024 * 1024)),
+        status: 'COMPLETED',
       },
     });
-
-    const uploadDir = path.join(ORIGINAL_DIR, upload.id);
-    const videoDir = path.join(ORIGINAL_DIR, video.id);
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-    if (!fs.existsSync(videoDir)) fs.mkdirSync(videoDir, { recursive: true });
-
-    // Pre-create empty combined.mp4 files so stream API endpoints never return 404
-    const combinedUploadPath = path.join(uploadDir, 'combined.mp4');
-    const combinedVideoPath = path.join(videoDir, 'combined.mp4');
-    if (!fs.existsSync(combinedUploadPath)) fs.writeFileSync(combinedUploadPath, Buffer.alloc(0));
-    if (!fs.existsSync(combinedVideoPath)) fs.writeFileSync(combinedVideoPath, Buffer.alloc(0));
 
     return res.status(201).json({
       uploadId: upload.id,
       videoId: video.id,
-      chunkSize,
-      totalChunks,
+      chunkSize: 1024 * 1024,
+      totalChunks: upload.totalChunks,
     });
   } catch (error: any) {
     console.error('Initiate upload error:', error);
     ensureCorsHeaders(req, res);
-    return res.status(500).json({ error: 'Failed to initiate upload' });
+    return res.status(500).json({ error: 'Failed to initiate video metadata' });
   }
 }
 
 export async function uploadChunk(req: AuthRequest, res: Response) {
   ensureCorsHeaders(req, res);
-  try {
-    const { uploadId, chunkIndex } = req.params;
-    const index = parseInt(chunkIndex, 10);
-
-    const upload = await prisma.upload.findUnique({ where: { id: uploadId } });
-    if (!upload) return res.status(404).json({ error: 'Upload session not found' });
-
-    const uploadDir = path.join(ORIGINAL_DIR, upload.id);
-    if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-    const chunkPath = path.join(uploadDir, `chunk_${String(index).padStart(4, '0')}.part`);
-
-    const finalizeChunk = async () => {
-      let retries = 3;
-      let success = false;
-      while (retries > 0 && !success) {
-        try {
-          await prisma.uploadChunk.upsert({
-            where: { uploadId_chunkIndex: { uploadId: upload.id, chunkIndex: index } },
-            update: { isUploaded: true, uploadedAt: new Date() },
-            create: {
-              uploadId: upload.id,
-              chunkIndex: index,
-              byteStart: BigInt(index * upload.chunkSize),
-              byteEnd: BigInt((index + 1) * upload.chunkSize),
-              isUploaded: true,
-              uploadedAt: new Date(),
-            },
-          });
-          success = true;
-        } catch (dbErr) {
-          retries--;
-          if (retries === 0) throw dbErr;
-          await new Promise((r) => setTimeout(r, 150));
-        }
-      }
-
-      const completedCount = await prisma.uploadChunk.count({
-        where: { uploadId: upload.id, isUploaded: true },
-      });
-
-      await prisma.upload.update({
-        where: { id: upload.id },
-        data: { completedChunks: completedCount },
-      });
-
-      // Progressively write uploaded chunk bytes to combined.mp4
-      await appendChunkToCombinedFile(upload.id, upload.videoId, index, upload.chunkSize);
-
-      // Mark video as READY as soon as initial stream buffer (>= 3 chunks / 30MB) is ready for instant playback
-      if (completedCount >= 3) {
-        const videoRecord = await prisma.video.findUnique({ where: { id: upload.videoId } });
-        if (videoRecord && videoRecord.status === 'UPLOADING') {
-          const updatedVideo = await prisma.video.update({
-            where: { id: upload.videoId },
-            data: { status: 'READY' },
-          });
-          syncVideoMetadataToFirestore(updatedVideo).catch(() => {});
-        }
-      }
-
-      // If all chunks uploaded, trigger combined assembly & background video processing
-      if (completedCount === upload.totalChunks) {
-        await prisma.upload.update({ where: { id: upload.id }, data: { status: 'PROCESSING' } });
-        await prisma.video.update({ where: { id: upload.videoId }, data: { status: 'PROCESSING' } });
-
-        // Run background FFmpeg / assembly processing
-        processVideoFile(upload.id, upload.videoId).catch(console.error);
-      }
-
-      return res.json({ success: true, chunkIndex: index, completedChunks: completedCount });
-    };
-
-    if (req.file && req.file.buffer && req.file.buffer.length > 0) {
-      await fs.promises.writeFile(chunkPath, req.file.buffer);
-      return await finalizeChunk();
-    }
-
-    if (Buffer.isBuffer(req.body) && req.body.length > 0) {
-      await fs.promises.writeFile(chunkPath, req.body);
-      return await finalizeChunk();
-    }
-
-    const writeStream = fs.createWriteStream(chunkPath);
-
-    writeStream.on('error', (err) => {
-      console.error('WriteStream error:', err);
-      ensureCorsHeaders(req, res);
-      if (!res.headersSent) res.status(500).json({ error: 'Failed to write chunk' });
-    });
-
-    req.on('error', (err) => {
-      console.error('Request stream error:', err);
-      writeStream.destroy();
-    });
-
-    req.pipe(writeStream);
-
-    writeStream.on('finish', async () => {
-      try {
-        await finalizeChunk();
-      } catch (err: any) {
-        console.error(`Upload chunk ${index} finish processing error:`, err);
-        ensureCorsHeaders(req, res);
-        if (!res.headersSent) {
-          return res.status(500).json({ error: 'Failed to process upload chunk' });
-        }
-      }
-    });
-  } catch (error: any) {
-    console.error('Upload chunk error:', error);
-    ensureCorsHeaders(req, res);
-    if (!res.headersSent) {
-      return res.status(500).json({ error: 'Failed to upload chunk' });
-    }
-  }
+  return res.status(410).json({
+    error: 'Render backend does not store video chunks. Video transfer is peer-to-peer.',
+  });
 }
 
 export async function getUploadStatus(req: AuthRequest, res: Response) {
   ensureCorsHeaders(req, res);
   try {
     const { uploadId } = req.params;
-    const upload = await prisma.upload.findUnique({
-      where: { id: uploadId },
-      include: { chunks: { where: { isUploaded: true }, select: { chunkIndex: true } } },
-    });
-
+    const upload = await prisma.upload.findUnique({ where: { id: uploadId } });
     if (!upload) return res.status(404).json({ error: 'Upload not found' });
-
-    const completedIndexes = upload.chunks.map((c) => c.chunkIndex);
     return res.json({
       uploadId: upload.id,
       videoId: upload.videoId,
-      status: upload.status,
-      completedChunks: completedIndexes.length,
+      status: 'COMPLETED',
+      completedChunks: upload.totalChunks,
       totalChunks: upload.totalChunks,
-      completedIndexes,
     });
   } catch (error: any) {
     ensureCorsHeaders(req, res);
@@ -284,191 +141,13 @@ export async function getUploadStatus(req: AuthRequest, res: Response) {
 
 export async function checkChunkStatus(req: AuthRequest, res: Response) {
   ensureCorsHeaders(req, res);
-  try {
-    const { uploadId, chunkIndex } = req.params;
-    const index = parseInt(chunkIndex, 10);
-
-    const chunkRecord = await prisma.uploadChunk.findUnique({
-      where: {
-        uploadId_chunkIndex: {
-          uploadId,
-          chunkIndex: index,
-        },
-      },
-    });
-
-    if (chunkRecord && chunkRecord.isUploaded) {
-      return res.json({ uploadId, chunkIndex: index, uploaded: true });
-    }
-
-    const uploadDir = path.join(ORIGINAL_DIR, uploadId);
-    const chunkPath = path.join(uploadDir, `chunk_${String(index).padStart(4, '0')}.part`);
-    const exists = fs.existsSync(chunkPath);
-
-    return res.json({ uploadId, chunkIndex: index, uploaded: exists });
-  } catch (err: any) {
-    ensureCorsHeaders(req, res);
-    return res.status(500).json({ error: err.message });
-  }
+  return res.json({ uploaded: true });
 }
 
 export async function streamVideoFile(req: Request, res: Response) {
-  try {
-    const { videoId } = req.params;
-    if (!videoId) {
-      return res.status(400).send('Video ID required');
-    }
-
-    // Check if the video points to an external source/CDN URL
-    const videoRecord = await prisma.video.findFirst({
-      where: { OR: [{ id: videoId }] },
-    }).catch(() => null);
-
-    if (videoRecord) {
-      const externalUrl = videoRecord.youtubeUrl || (videoRecord.manifestUrl?.startsWith('http') ? videoRecord.manifestUrl : null);
-      if (externalUrl && !externalUrl.includes('/api/videos/stream/')) {
-        // Redirect directly to external CDN / Video source to eliminate Render backend bandwidth consumption
-        return res.redirect(302, externalUrl);
-      }
-    }
-
-    const rawSubPath = req.params[0] || 'index.m3u8';
-    const subPath = rawSubPath.split('?')[0];
-    let filePath = path.join(SEGMENTS_DIR, videoId, subPath);
-
-    // If requested HLS segment/manifest exists on disk in SEGMENTS_DIR, serve it
-    if (fs.existsSync(filePath)) {
-      if (subPath.endsWith('.m3u8')) {
-        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-      } else if (subPath.endsWith('.ts')) {
-        res.setHeader('Content-Type', 'video/MP2T');
-      }
-      res.setHeader('Cache-Control', 'public, max-age=86400');
-      return fs.createReadStream(filePath).pipe(res);
-    }
-
-    // If a requested .ts segment is missing, attempt on-demand regeneration
-    if (subPath.endsWith('.ts')) {
-      const match = subPath.match(/segment_(\d+)\.ts/);
-      if (match) {
-        const segNum = parseInt(match[1], 10);
-        const room = await prisma.room.findFirst({ where: { currentVideoId: videoId } }).catch(() => null);
-        const roomId = room ? room.roomCode : 'DEFAULT';
-
-        try {
-          const { regenerateSegmentOnDemand } = await import('../services/segment/SegmentRegenerator');
-          const success = await regenerateSegmentOnDemand(roomId, videoId, segNum);
-          if (success && fs.existsSync(filePath)) {
-            res.setHeader('Content-Type', 'video/MP2T');
-            res.setHeader('Cache-Control', 'public, max-age=86400');
-            return fs.createReadStream(filePath).pipe(res);
-          }
-        } catch (regenErr) {
-          console.warn('Segment regeneration error:', regenErr);
-        }
-      }
-    }
-
-    // Fallback: Stream directly from combined.mp4 if HLS segments don't exist yet
-    const upload = await prisma.upload.findFirst({
-      where: { OR: [{ videoId: videoId }, { id: videoId }] },
-    }).catch(() => null);
-
-    const actualVideoId = upload ? upload.videoId : videoId;
-    const actualUploadId = upload ? upload.id : videoId;
-
-    const possiblePaths = [
-      path.join(ORIGINAL_DIR, actualVideoId, 'combined.mp4'),
-      path.join(ORIGINAL_DIR, actualUploadId, 'combined.mp4'),
-      path.join(ORIGINAL_DIR, videoId, 'combined.mp4'),
-    ];
-
-    let combinedPath: string | null = null;
-    for (const p of possiblePaths) {
-      if (fs.existsSync(p)) {
-        combinedPath = p;
-        break;
-      }
-    }
-
-    if (!combinedPath) {
-      combinedPath = path.join(ORIGINAL_DIR, actualVideoId, 'combined.mp4');
-      const dir = path.dirname(combinedPath);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(combinedPath, Buffer.alloc(0));
-    }
-
-    if (subPath.endsWith('.m3u8') || subPath === 'index.m3u8') {
-      const vRecord = videoRecord || await prisma.video.findFirst({
-        where: { OR: [{ id: actualVideoId }, { id: videoId }] },
-      }).catch(() => null);
-      const realDuration = (vRecord && vRecord.duration && vRecord.duration > 0) ? Number(vRecord.duration) : 0;
-
-      res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-      res.setHeader('Cache-Control', 'no-cache');
-      if (realDuration > 0) {
-        const targetDur = Math.ceil(realDuration);
-        const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:${targetDur}\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:${realDuration.toFixed(1)},\nsource.mp4\n#EXT-X-ENDLIST\n`;
-        return res.send(m3u8Content);
-      }
-
-      const m3u8Content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:86400\n#EXT-X-MEDIA-SEQUENCE:0\n#EXTINF:86400.0,\nsource.mp4\n#EXT-X-ENDLIST\n`;
-      return res.send(m3u8Content);
-    }
-
-    if (subPath === 'source.mp4' || subPath.endsWith('.mp4') || subPath.endsWith('.ts')) {
-      try {
-        const stat = fs.statSync(combinedPath);
-        const fileSize = stat.size;
-        const range = req.headers.range;
-
-        if (range) {
-          const parts = range.replace(/bytes=/, '').split('-');
-          const start = parseInt(parts[0], 10);
-          let end = parts[1] ? parseInt(parts[1], 10) : (fileSize > 0 ? fileSize - 1 : 0);
-          if (end >= fileSize && fileSize > 0) {
-            end = fileSize - 1;
-          }
-          if (start > end) {
-            res.status(206);
-            res.set({
-              'Content-Range': `bytes 0-0/${fileSize}`,
-              'Accept-Ranges': 'bytes',
-              'Content-Length': '0',
-              'Content-Type': 'video/mp4',
-            });
-            return res.end();
-          }
-          const chunkSize = Math.max(0, end - start + 1);
-          const file = fs.createReadStream(combinedPath, { start, end });
-
-          res.status(206);
-          res.set({
-            'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-            'Accept-Ranges': 'bytes',
-            'Content-Length': chunkSize.toString(),
-            'Content-Type': 'video/mp4',
-            'Cache-Control': 'no-cache',
-          });
-          return file.pipe(res);
-        } else {
-          res.status(200);
-          res.set({
-            'Content-Length': fileSize.toString(),
-            'Content-Type': 'video/mp4',
-            'Cache-Control': 'public, max-age=3600',
-          });
-          return fs.createReadStream(combinedPath).pipe(res);
-        }
-      } catch (fileErr) {
-        console.error('Combined video stream file access error:', fileErr);
-        return res.status(503).send('Video source temporarily busy. Please retry.');
-      }
-    }
-
-    return res.status(404).send('Segment or manifest file not found');
-  } catch (error: any) {
-    console.error('Stream video error:', error);
-    return res.status(500).send('Streaming error');
-  }
+  ensureCorsHeaders(req, res);
+  return res.status(410).json({
+    error: 'Render backend does not stream video files. Video data is transferred directly peer-to-peer between room participants.',
+  });
 }
+

@@ -8,6 +8,7 @@ import { cleanupWorker } from './services/cleanup/CleanupWorker';
 const server = http.createServer(app);
 
 const io = new SocketIOServer(server, {
+  maxHttpBufferSize: 1e6, // 1MB maximum payload size limit to prevent binary video data over sockets
   cors: {
     origin: (origin, callback) => callback(null, true),
     credentials: true,
@@ -16,10 +17,6 @@ const io = new SocketIOServer(server, {
 
 setupSocketIO(io);
 
-// Start Background Segment Cleanup Worker (only in non-serverless environment)
-if (!process.env.VERCEL) {
-  cleanupWorker.start();
-}
 
 const PORT = parseInt(env.PORT, 10) || 5000;
 

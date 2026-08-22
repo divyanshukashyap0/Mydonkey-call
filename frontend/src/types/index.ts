@@ -126,6 +126,10 @@ export interface ServerToClientEvents {
   'webrtc:answer': (data: { fromUserId: string; sdp: any }) => void;
   'webrtc:ice': (data: { fromUserId: string; candidate: any }) => void;
   'webrtc:reconnect-request': (data: { fromUserId: string }) => void;
+  'p2p-video:offer': (data: { fromUserId: string; sdp: any }) => void;
+  'p2p-video:answer': (data: { fromUserId: string; sdp: any }) => void;
+  'p2p-video:ice': (data: { fromUserId: string; candidate: any }) => void;
+  'p2p-video:provider-ready': (data: { providerId: string; videoId: string }) => void;
   'participant:state-changed': (data: { userId: string; isMuted: boolean; isVideoOff: boolean; isReady?: boolean; role?: Role; connectionQuality?: ConnectionQuality }) => void;
   'room:countdown-tick': (data: { secondsRemaining: number }) => void;
   'room:countdown-cancelled': (data: { reason: string }) => void;
@@ -160,9 +164,14 @@ export interface ClientToServerEvents {
   'webrtc:answer': (data: { targetUserId: string; sdp: any }) => void;
   'webrtc:ice': (data: { targetUserId: string; candidate: any }) => void;
   'webrtc:reconnect-request': (data: { targetUserId: string }) => void;
+  'p2p-video:offer': (data: { targetUserId: string; sdp: any }) => void;
+  'p2p-video:answer': (data: { targetUserId: string; sdp: any }) => void;
+  'p2p-video:ice': (data: { targetUserId: string; candidate: any }) => void;
+  'p2p-video:provider-ready': (data: { videoId: string }) => void;
   'participant:toggle-media': (data: { isMuted?: boolean; isVideoOff?: boolean }) => void;
   'host:mute-participant': (data: { targetUserId: string; isMuted?: boolean }) => void;
   'host:mute-all': () => void;
   'upload:progress': (data: { progress: any; fileName: string }) => void;
   'sync:ping': (data: { clientTime: number }) => void;
 }
+

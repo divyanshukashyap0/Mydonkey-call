@@ -9,7 +9,10 @@ import { FloatingCallOverlay } from '../components/video-call/FloatingCallOverla
 import { ChatPanel } from '../components/chat/ChatPanel';
 import { HostControlsModal } from '../components/room/HostControlsModal';
 import { WebRTCProvider } from '../context/WebRTCContext';
+import { P2PVideoProvider } from '../context/P2PVideoContext';
 import { HLSPlayer } from '../components/player/HLSPlayer';
+import { P2PVideoPlayer } from '../components/player/P2PVideoPlayer';
+
 import { UploadModal } from '../components/upload/UploadModal';
 import { BackgroundUploadOverlay } from '../components/upload/BackgroundUploadOverlay';
 import { ConnectionHealthBadge } from '../components/room/ConnectionHealthBadge';
@@ -410,8 +413,10 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
   const currentVideo = currentRoom?.currentVideo;
 
   return (
+    <P2PVideoProvider currentUserId={user?.id} hostId={currentRoom?.hostId}>
     <WebRTCProvider currentUserId={user?.id}>
       <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-dark)' }}>
+
       <Navbar onOpenCreateModal={() => setIsHostSettingsOpen(true)} />
 
       {/* Mobile Telemetry Subheader Bar */}
@@ -646,15 +651,12 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                   }}
                   onEnded={handleVideoEnded}
                 />
-              ) : currentVideo?.sourceType === 'UPLOADED' && currentVideo.manifestUrl ? (
-                <HLSPlayer
-                  manifestUrl={currentVideo.manifestUrl}
+              ) : currentVideo?.sourceType === 'UPLOADED' ? (
+                <P2PVideoPlayer
+                  isHost={isHost}
+                  videoTitle={currentVideo.title}
                   onReady={(_videoEl, controller) => {
                     playerRef.current = controller;
-                  }}
-                  onAudioTracksChange={(tracks, activeId) => {
-                    setAudioTracks(tracks);
-                    setSelectedAudioTrackId(activeId);
                   }}
                   onVideoDimensionsChange={(_w, _h, ratio, label) => {
                     setVideoAspectRatio(ratio);
@@ -663,6 +665,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
                   onEnded={handleVideoEnded}
                 />
               ) : (
+
                 <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', background: 'rgba(0,0,0,0.5)', padding: '24px', textAlign: 'center' }}>
                   <div style={{ width: '56px', height: '56px', borderRadius: '18px', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)', marginBottom: '16px' }}>
                     <Sparkles size={28} />
@@ -1181,6 +1184,8 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
       />
     </div>
     </WebRTCProvider>
+    </P2PVideoProvider>
   );
 };
+
 
