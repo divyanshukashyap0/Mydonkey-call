@@ -8,6 +8,7 @@ export interface MovieStreamContextType {
   isBroadcasting: boolean;
   startBroadcastingMovie: (stream: MediaStream) => void;
   stopBroadcastingMovie: () => void;
+  reconnectMovieStream: () => void;
 }
 
 const MovieStreamContext = createContext<MovieStreamContextType | null>(null);
@@ -84,14 +85,13 @@ export const MovieStreamProvider: React.FC<{ currentUserId?: string; hostId?: st
     localStreamRef.current = stream;
     setIsBroadcasting(true);
 
-    const socket = getSocket();
-
-    moviePcsRef.current.forEach((pc) => {
-      pc.getSenders().forEach((sender) => {
-        try { pc.removeTrack(sender); } catch (e) {}
-      });
-      stream.getTracks().forEach((track) => {
-        try { pc.addTrack(track, stream); } catch (e) {}
+    // Automatically initiate movie peer connection to all current participants
+    import('../store/useRoomStore').then(({ useRoomStore }) => {
+      const roomParticipants = useRoomStore.getState().participants;
+      roomParticipants.forEach((p) => {
+        if (p.userId !== currentUserId) {
+          connectMoviePeer(p.userId);
+        }
       });
     });
   };
@@ -174,6 +174,20 @@ export const MovieStreamProvider: React.FC<{ currentUserId?: string; hostId?: st
       }
     };
 
+    const handleUserJoined = ({ participant }: { participant: any }) => {
+      if (localStreamRef.current && participant.userId !== currentUserId) {
+        console.log(`[MovieStreamContext] ⚡ Participant ${participant.userId} joined. Initiating movie stream offer...`);
+        connectMoviePeer(participant.userId);
+      }
+    };
+
+    const handleReconnectRequest = ({ fromUserId }: { fromUserId: string }) => {
+      if (localStreamRef.current && fromUserId !== currentUserId) {
+        console.log(`[MovieStreamContext] 🔄 Received movie stream reconnect request from ${fromUserId}`);
+        connectMoviePeer(fromUserId);
+      }
+    };
+
     const handleUserLeft = ({ userId }: { userId: string }) => {
       const pc = moviePcsRef.current.get(userId);
       if (pc) {
@@ -186,15 +200,19 @@ export const MovieStreamProvider: React.FC<{ currentUserId?: string; hostId?: st
     socket.on('movie-stream:offer', handleOffer);
     socket.on('movie-stream:answer', handleAnswer);
     socket.on('movie-stream:ice', handleIce);
+    socket.on('movie-stream:reconnect-request', handleReconnectRequest);
+    socket.on('room:user-joined', handleUserJoined);
     socket.on('room:user-left', handleUserLeft);
 
     return () => {
       socket.off('movie-stream:offer', handleOffer);
       socket.off('movie-stream:answer', handleAnswer);
       socket.off('movie-stream:ice', handleIce);
+      socket.off('movie-stream:reconnect-request', handleReconnectRequest);
+      socket.off('room:user-joined', handleUserJoined);
       socket.off('room:user-left', handleUserLeft);
     };
-  }, [currentUserId]);
+  }, [currentUserId, hostId]);
 
   // Initiate peer connection to target user if host is broadcasting
   const connectMoviePeer = async (targetUserId: string) => {
@@ -210,6 +228,13 @@ export const MovieStreamProvider: React.FC<{ currentUserId?: string; hostId?: st
     }
   };
 
+  const reconnectMovieStream = () => {
+    if (hostId && currentUserId !== hostId) {
+      console.log('[MovieStreamContext] Emitting movie-stream:reconnect-request to host:', hostId);
+      getSocket().emit('movie-stream:reconnect-request', { targetUserId: hostId });
+    }
+  };
+
   return (
     <MovieStreamContext.Provider
       value={{
@@ -218,6 +243,7 @@ export const MovieStreamProvider: React.FC<{ currentUserId?: string; hostId?: st
         isBroadcasting,
         startBroadcastingMovie,
         stopBroadcastingMovie,
+        reconnectMovieStream,
       }}
     >
       {children}

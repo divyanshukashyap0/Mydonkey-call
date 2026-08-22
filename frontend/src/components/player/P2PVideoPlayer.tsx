@@ -38,13 +38,24 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
   onVideoDimensionsChange,
 }) => {
   const { localVideoObjectUrl, setLocalVideoFile, p2pStatus, p2pError, requestChunk, peerVideoMetadata, peerCount, reconnectP2P } = useP2PVideo();
-  const { startBroadcastingMovie, remoteMovieStream } = useMovieStreamContext();
+  const { startBroadcastingMovie, remoteMovieStream, reconnectMovieStream } = useMovieStreamContext();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [bufferProgress, setBufferProgress] = useState(0);
   const [isBuffering, setIsBuffering] = useState(false);
 
   const currentObjectUrlRef = useRef<string | null>(null);
+
+  // Peer Viewer: Periodically request live WebRTC movie stream connection from Host if not connected
+  useEffect(() => {
+    if (!isHost && !remoteMovieStream) {
+      reconnectMovieStream();
+      const interval = setInterval(() => {
+        if (!remoteMovieStream) reconnectMovieStream();
+      }, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [isHost, remoteMovieStream]);
 
   // Host: Play directly from local file ObjectURL
   useEffect(() => {

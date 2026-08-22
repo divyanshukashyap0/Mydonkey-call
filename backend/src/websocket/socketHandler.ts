@@ -844,6 +844,13 @@ export function setupSocketIO(io: SocketIOServer) {
       });
     });
 
+    socket.on('movie-stream:reconnect-request', ({ targetUserId }) => {
+      if (!socket.user || !targetUserId) return;
+      io.to(`user:${targetUserId}`).emit('movie-stream:reconnect-request', {
+        fromUserId: socket.user.id,
+      });
+    });
+
     // P2P DataChannel Video Transfer Signaling Relay
     socket.on('p2p-video:offer', ({ targetUserId, sdp }) => {
       if (!socket.user || !targetUserId) return;
