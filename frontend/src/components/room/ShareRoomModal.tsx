@@ -95,7 +95,7 @@ export const ShareRoomModal: React.FC<ShareRoomModalProps> = ({
           style={{ width: '100%', padding: '12px', fontSize: '0.95rem', background: 'linear-gradient(135deg, var(--primary) 0%, #b81d24 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
         >
           <Share2 size={20} />
-          <span>Quick Share Link (WhatsApp, Apps & Clipboard)</span>
+          <span>Share</span>
         </button>
 
         {/* Shareable Link Input Box */}
