@@ -67,6 +67,7 @@ export const LiveWebRTCPlayer: React.FC<LiveWebRTCPlayerProps> = ({
     if (!video || !activeStream) return;
 
     const controller: PlayerController = {
+      isLiveStream: true,
       getCurrentTime: () => video.currentTime || 0,
       getDuration: () => video.duration || 0,
       playVideo: async () => {
@@ -86,15 +87,15 @@ export const LiveWebRTCPlayer: React.FC<LiveWebRTCPlayerProps> = ({
           video.pause();
         } catch (err) {}
       },
-      seekTo: (sec: number) => {
-        try {
-          video.currentTime = sec;
-        } catch (err) {}
+      seekTo: (_sec: number) => {
+        // Seeking is a no-op for live WebRTC MediaStream srcObject.
+        // The host's captureStream delivers the live stream frames directly.
+        if (video.paused) {
+          video.play().catch(() => {});
+        }
       },
-      setPlaybackRate: (r: number) => {
-        try {
-          video.playbackRate = r;
-        } catch (err) {}
+      setPlaybackRate: (_r: number) => {
+        // Playback rate adjustment is ignored for live WebRTC MediaStream.
       },
       getPlayerState: () => (video.paused ? 2 : 1),
       mute: () => {

@@ -18,6 +18,7 @@ export interface PlayerController {
   getPlayerState: () => number;
   mute: () => void;
   unMute: () => void;
+  isLiveStream?: boolean;
   getAudioTracks?: () => AudioTrackItem[];
   setAudioTrack?: (trackId: number) => void;
 }

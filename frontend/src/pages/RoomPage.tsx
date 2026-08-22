@@ -219,6 +219,31 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
     const interval = setInterval(() => {
       if (!authoritativePlayback || !playerRef.current || !playerRef.current.getCurrentTime) return;
 
+      // Live WebRTC MediaStream Mode Handling
+      if (playerRef.current.isLiveStream) {
+        // Display host's authoritative movie position in UI timeline
+        const serverNow = getAdjustedServerTime();
+        let expectedPosition = authoritativePlayback.position;
+        if (authoritativePlayback.state === 'PLAYING') {
+          const elapsedSec = (serverNow - authoritativePlayback.updatedAt) / 1000;
+          expectedPosition += elapsedSec * authoritativePlayback.playbackRate;
+        }
+        setCurrentTime(expectedPosition);
+        setDriftMs(0);
+
+        const playerState = playerRef.current.getPlayerState();
+        const isPlayerPlaying = playerState === 1;
+
+        if (authoritativePlayback.state === 'PLAYING' && !isPlayerPlaying) {
+          isProgrammaticActionRef.current = true;
+          playerRef.current.playVideo();
+        } else if (authoritativePlayback.state === 'PAUSED' && isPlayerPlaying) {
+          isProgrammaticActionRef.current = true;
+          playerRef.current.pauseVideo();
+        }
+        return;
+      }
+
       const playerTime = playerRef.current.getCurrentTime() || 0;
       setCurrentTime(playerTime);
       const rawDuration = playerRef.current.getDuration() || 0;
@@ -251,7 +276,7 @@ export const RoomPage: React.FC<RoomPageProps> = ({ roomCode }) => {
         playerRef.current.pauseVideo();
       }
 
-      // 3-Tier Drift Correction Engine
+      // 3-Tier Drift Correction Engine (For file & VOD streams)
       const absDrift = Math.abs(drift);
 
       if (absDrift > 1500) {
