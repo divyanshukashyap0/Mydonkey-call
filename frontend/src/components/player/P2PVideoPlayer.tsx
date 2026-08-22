@@ -39,7 +39,7 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
   }, [isHost, localVideoObjectUrl]);
 
 
-  // Peer Viewer: Receive progressive P2P chunks over DataChannel
+  // Peer Viewer: Receive progressive P2P video stream over WebRTC DataChannel
   useEffect(() => {
     if (isHost) return;
 
@@ -50,16 +50,17 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
       if (!peerVideoMetadata) return;
 
       const { fileSize, mimeType } = peerVideoMetadata;
-      const CHUNK_SIZE = 256 * 1024; // 256 KB chunks for high-speed streaming
+      const CHUNK_SIZE = 512 * 1024; // 512 KB chunks for high-performance throughput
       const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
       const buffers: ArrayBuffer[] = [];
       let fetchedBytes = 0;
+      let initialBlobCreated = false;
 
       setIsBuffering(true);
       setBufferProgress(0);
 
-      // Fast-start window: start playing after first 2 chunks (512 KB) or 100% of small file
-      const initialWindow = Math.min(2, totalChunks);
+      // Fast-start window: create initial playable Blob URL after 2 MB or 100% of smaller files
+      const initialWindow = Math.min(4, totalChunks);
 
       for (let i = 0; i < totalChunks && !cancel; i++) {
         const start = i * CHUNK_SIZE;
@@ -74,34 +75,37 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
         const progressPercent = Math.round((fetchedBytes / fileSize) * 100);
         if (isMounted) setBufferProgress(progressPercent);
 
-        // Instantly generate playable Blob URL on initial window, then periodically or on 100%
-        if (i === initialWindow - 1 || i % 4 === 0 || i === totalChunks - 1) {
+        // 1. Initial playable Blob URL once fast-start window (2MB or 100%) is ready
+        if (!initialBlobCreated && (i === initialWindow - 1 || i === totalChunks - 1)) {
+          initialBlobCreated = true;
           const blob = new Blob(buffers, { type: mimeType || 'video/mp4' });
           const blobUrl = URL.createObjectURL(blob);
 
           if (isMounted) {
-            const video = videoRef.current;
-            const prevTime = video?.currentTime || 0;
-
+            currentObjectUrlRef.current = blobUrl;
             setStreamUrl(blobUrl);
             setIsBuffering(false);
-
-            if (currentObjectUrlRef.current) {
-              URL.revokeObjectURL(currentObjectUrlRef.current);
-            }
-            currentObjectUrlRef.current = blobUrl;
-
-            // Preserve current playback time and auto-play
-            if (video && prevTime > 0) {
-              video.currentTime = prevTime;
-            }
-            if (video && video.paused) {
-              video.play().catch(() => {
-                video.muted = true;
-                video.play().catch(() => {});
-              });
-            }
           }
+        }
+      }
+
+      // 2. Once 100% of chunks are downloaded, swap to the complete final Blob URL if movie > initial window
+      if (!cancel && isMounted && buffers.length === totalChunks && totalChunks > initialWindow) {
+        const finalBlob = new Blob(buffers, { type: mimeType || 'video/mp4' });
+        const finalBlobUrl = URL.createObjectURL(finalBlob);
+
+        const video = videoRef.current;
+        const prevTime = video?.currentTime || 0;
+
+        if (currentObjectUrlRef.current) {
+          URL.revokeObjectURL(currentObjectUrlRef.current);
+        }
+        currentObjectUrlRef.current = finalBlobUrl;
+        setStreamUrl(finalBlobUrl);
+        setIsBuffering(false);
+
+        if (video && prevTime > 0) {
+          video.currentTime = prevTime;
         }
       }
     }
@@ -113,6 +117,7 @@ export const P2PVideoPlayer: React.FC<P2PVideoPlayerProps> = ({
       cancel = true;
     };
   }, [isHost, peerVideoMetadata]);
+
 
   // Auto-play stream on viewer device once streamUrl updates
   useEffect(() => {
